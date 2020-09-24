@@ -1,0 +1,7 @@
+#ifndef GOS_ANALYSIS_UNIT_TESTING_H_
+#define GOS_ANALYSIS_UNIT_TESTING_H_
+
+#define GA_UNIT_TESTING_VAR_TC_STANDARD_PATH \
+  "@gos_analysis_unit_testing_var_tc_standard_dir@"
+
+#endif

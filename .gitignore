@@ -1,0 +1,39 @@
+# Eclipse
+.classpath
+.project
+.settings/
+
+# Maven
+/log/
+/target/
+
+# R
+*.RData
+*.Rhistory
+.Rproj.user/
+
+# LabVIEW
+*.aliases
+
+# Qt
+.qmake.stash
+Makefile
+Makefile.debug
+Makefile.Release
+*.pro.user
+
+# CMake
+CMakeSettings.json
+
+# Visual Studio
+.vs/
+out/
+
+# Excel
+~$*.xlsx
+
+# Other
+[Dd]ebug
+[Rr]elease
+/bin/
+

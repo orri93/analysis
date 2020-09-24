@@ -1,0 +1,8 @@
+<RCC>
+  <qresource prefix="/">
+    <file>qml/analysis/AnalysisPanel.qml</file>
+    <file>qml/analysis/AnalysisChart.qml</file>
+    <file>qml/analysis/RealSpinBox.qml</file>
+    <file>qml/analysis/main.qml</file>
+  </qresource>
+</RCC>

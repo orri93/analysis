@@ -1,0 +1,122 @@
+---
+title: "PID tuning with black box search"
+author: "Geirmundur Orri Sigurdsson"
+date: "20 4 2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# PID Black Box Tuning Report
+
+```{r echo = FALSE, warning = FALSE, message = FALSE, results="hide", fig.show="hide", comment=NA}
+
+library(knitr)
+library(kableExtra)
+library(ggplot2)
+library(stats)
+library(akima)
+library(fields)
+
+createblacktabledata <- function(data) {
+  return(data.frame(
+    Kp = data$kp,
+    Ki = data$ki,
+    Kd = data$kd,
+    Peak = data$peak,
+    "Peak Error" = data$peak.error,
+    "Stable Error" = data$stable.error,
+    Performance = data$performance))
+}
+
+createblacktable <- function(data) {
+  kable(createblacktabledata(data)) %>%
+    kable_styling(full_width = F)
+}
+
+createsubdata <- function(sorteddata, subfactor) {
+  count <- length(sorteddata$performance)
+  subcount <- round(count * subfactor, 0)
+  return(data.frame(
+    kp = sorteddata$kp[1:subcount],
+    ki = sorteddata$ki[1:subcount],
+    performance = sorteddata$performance[1:subcount]))
+}
+
+createplot <- function(data) {
+# mid <- mean(data$performance)
+  colorstouse <- c("skyblue", "cyan", "green", "blue", "red")
+  gg <- ggplot(data, aes(y = kp, x = ki, color = performance, label = performance))
+  gg <- gg + geom_point()
+  gg <- gg + geom_text()
+# gg <- gg + scale_color_gradient(low = "cyan", mid = "blue", high = "red")
+# gg <- gg + scale_colour_gradient2(low = muted("cyan"), mid = "blue", high = muted("red"), midpoint = 2)
+# gg <- gg + scale_color_gradient2(low = "cyan", mid = "blue", high = "red")
+  gg <- gg + scale_color_gradientn(colours = colorstouse)
+  gg
+}
+
+createsubplot <- function(sorteddata, subfactor) {
+  subdata <- createsubdata(sorteddata, subfactor)
+  colorstouse <- c("skyblue", "cyan", "green", "blue", "red")
+  gg <- ggplot(subdata, aes(y = kp, x = ki, color = performance, label = performance))
+  gg <- gg + geom_point()
+  gg <- gg + geom_text()
+  gg <- gg + scale_color_gradientn(colours = colorstouse)
+  gg
+}
+
+createheatmaploess <- function(sorteddata, subfactor) {
+# subdata <- createsubdata(sorteddata, subfactor)
+  subdata <- sorteddata
+  topo <- data.frame(x = subdata$kp, y = subdata$ki, z = subdata$performance)
+  topo.loess <- loess (z ~ x * y, topo, degree = 2, span = 0.2)
+  x <- seq (min (topo$x), max (topo$x), .05)
+  y <- seq (min (topo$y), max (topo$y), .05)
+  interpolated <- predict (topo.loess, expand.grid (x = x, y = y))
+  image (x= x, y= y, z = interpolated, asp = 1)
+  points (topo)
+}
+
+createheatmapakima <- function(sorteddata, subfactor) {
+  s <- interp(sorteddata$kp, sorteddata$ki, sorteddata$performance, duplicate = "jitter")
+  image.plot(s)
+  points(x = sorteddata$kp, y = sorteddata$ki)
+}
+
+
+createheatmap <- function(sorteddata, subfactor) {
+  createheatmapakima(sorteddata, subfactor)
+}
+
+datafilepath <- "../pid/csv/200419at.csv"
+
+data <- read.csv(datafilepath)
+datasorted <- data[order(data$performance),]
+
+
+```
+
+## Performance
+
+```{r echo = FALSE, result = 'asis'}
+createblacktable(datasorted)
+```
+
+### Heat Map
+
+```{r echo=FALSE}
+createheatmap(data, 1)
+```
+
+### Chart
+
+```{r echo=FALSE}
+createsubplot(datasorted, 0.25)
+```
+
+```{r echo=FALSE}
+createplot(data)
+```

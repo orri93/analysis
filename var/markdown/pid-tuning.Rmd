@@ -1,0 +1,630 @@
+---
+title: "PID tuning comparison"
+author: "Geirmundur Orri Sigurdsson"
+date: "16 4 2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# PID Tuning Report
+
+```{r echo = FALSE, warning = FALSE, message = FALSE, results="hide", fig.show="hide", comment=NA}
+library(knitr)
+library(kableExtra)
+
+processpidformd <- function(datafilepath, iscale = 0.1, yl = -1, xl = -1, ymax = -1, xmax = -1, w = -1) {
+  
+  require(R.utils)
+  require(zoo)
+  
+  dcsv <- read.csv(datafilepath)
+  
+  if(w < 0) {
+    w = 25
+  }
+  
+  time <- dcsv[[1]]
+  status <- dcsv[[2]]
+  kp <- max(dcsv[[3]])
+  ki <- max(dcsv[[4]])
+  kd <- max(dcsv[[5]])
+  setpoint <- dcsv[[6]]
+  output <- dcsv[[7]]
+  temperature <- dcsv[[8]]
+  error <- dcsv[[9]]
+  integral <- dcsv[[10]]
+  derivative <- dcsv[[11]]
+  
+  scaled_integral <- integral * iscale
+  
+  data_list <- list(
+    "time" = time,
+    "kp" = kp,
+    "ki" = ki,
+    "kd" = kd,
+    "setpoint" = setpoint,
+    "output" = output,
+    "temperature" = temperature,
+    "error" = error,
+    "integral" = integral,
+    "derivative" = derivative,
+    "scaled_integral" = scaled_integral)
+  
+  count <- length(temperature)
+  fixed_setpoint <- max(setpoint)
+  maximum_temperature <- max(temperature)
+  
+  mtime = rollmean(time, w)
+  mtemperature <- rollmean(temperature, w)
+  mcount = length(mtemperature)
+  over <- FALSE
+  under <- FALSE
+  for(i in 1:mcount) {
+    if(over && under) {
+      break
+    } else {
+      if(over) {
+        if(mtemperature[i] < fixed_setpoint) {
+          under <- TRUE
+          undertime <- mtime[i]
+        }
+      } else {
+        if(mtemperature[i] > fixed_setpoint) {
+          over <- TRUE
+          overtime <- mtime[i]
+        }
+      }
+    }
+  }
+  
+  startindex <- -1
+  diffcount <- 0
+  diffsqsum <- 0
+  for(i in 1:count) {
+    if(time[i] > undertime) {
+      diffcount <- diffcount + 1
+      diffsqsum <- diffsqsum + error[i] * error[i]
+      if(startindex < 0) {
+        startindex = i
+      }
+    }
+  }
+  diffsqavr <- diffsqsum / diffcount
+  diffsqrt <- sqrt(diffsqavr)
+  
+  timescale_list <- list("minimum" = min(time), "maximum" = max(time))
+  
+  calculations_list <- list(
+    "timescale" = timescale_list,
+    "count" = count,
+    "fixed_setpoint" = fixed_setpoint,
+    "maximum_temperature" = maximum_temperature,
+    "overtime" = overtime,
+    "undertime" = undertime,
+    "startindex" = startindex,
+    "diffcount" = diffcount,
+    "diffsqsum" = diffsqsum,
+    "diffsqavr" = diffsqavr,
+    "diffsqrt" = diffsqrt,
+    "peak_error" = maximum_temperature - fixed_setpoint)
+  
+  if(ymax < 0) {
+    ymax = max(
+      fixed_setpoint,
+      max(output),
+      maximum_temperature,
+      max(error),
+      max(scaled_integral),
+      max(derivative))
+  }
+  if(xmax < 0) {
+    xmax <- max(mtime)
+  }
+  if(yl < 0) {
+    yl = ymax - 10
+  }
+  if(xl < 0) {
+    xl = 1000
+  }
+  limx <- c(0, xmax)
+  limy <- c(0, ymax)
+    
+  
+  leg <- c('temperature','output', 'setpoint', 'error', 'integral', 'derivative')
+  cols <- c('chocolate', 'blue', 'green', 'brown', 'darkviolet', 'cyan')
+  pchs <- c(1,2,3,4,5,6)
+  
+  labx <- "time"
+  laby <- "temperature"
+  
+  plot_list <- list(
+    "ymax" = ymax,
+    "xmax" = xmax,
+    "yl" = yl,
+    "xl" = xl,
+    "limx" = limx,
+    "limy" = limy,
+    "leg" = leg,
+    "cols" = cols,
+    "pchs" = pchs,
+    "labx" = labx,
+    "laby" = laby,
+    "title"= "PID result",
+    "sub" = datafilepath)
+  
+  result_list <- list(
+    "data" = data_list,
+    "calculations" = calculations_list,
+    "plot" = plot_list)
+  
+  return(result_list)
+}
+
+gentable <- function(pd) {
+  return(data.frame(
+    Parameter = c("Count", "Setpoint"),
+    Value = c(pd$calculations$count, pd$calculations$fixed_setpoint)))
+}
+
+tuningtable <- function(pd) {
+  return(data.frame(
+    Parameter = c("Kp", "Ki", "Kd"),
+    Value = c(pd$data$kp, pd$data$ki, pd$data$kd)))
+}
+
+calctable <- function(pd) {
+  return(data.frame(
+    Parameter = c("Maximum Temperature", "Peak Error", "General Error"),
+    Value = c(
+      pd$calculations$maximum_temperature,
+      pd$calculations$peak_error,
+      pd$calculations$diffsqrt)))
+}
+
+detailtable <- function(pd) {
+  return(data.frame(
+    Parameter = c(
+      "Over time",
+      "Under time",
+      "Start Index",
+      "End Index",
+      "General Error Count",
+      "Error Squared Sum",
+      "Error Squared Avrage"),
+    Value = c(
+      pd$calculations$overtime,
+      pd$calculations$undertime,
+      pd$calculations$startindex,
+      pd$calculations$count,
+      pd$calculations$diffcount,
+      pd$calculations$diffsqsum,
+      pd$calculations$diffsqavr)))
+}
+
+generateplot <- function(pd) {
+  plot(
+    pd$data$time,
+    pd$data$temperature,
+    xlab=pd$plot$labx,
+    ylab=pd$plot$laby,
+    ylim=pd$plot$limy,
+    col=pd$plot$cols[0],
+    pch=pd$plot$pchs[0])
+  par(new=TRUE)
+  plot(
+    pd$data$time,
+    pd$data$output,
+    xlab=pd$plot$labx,
+    ylab=pd$plot$laby,
+    ylim=pd$plot$limy,
+    col=pd$plot$cols[1],
+    pch=pd$plot$pchs[1])
+  par(new=TRUE)
+  plot(
+    pd$data$time,
+    pd$data$setpoint,
+    xlab=pd$plot$labx,
+    ylab=pd$plot$laby,
+    ylim=pd$plot$limy,
+    col=pd$plot$cols[2],
+    pch=pd$plot$pchs[2])
+  par(new=TRUE)
+  plot(
+    pd$data$time,
+    pd$data$error,
+    xlab=pd$plot$labx,
+    ylab=pd$plot$laby,
+    ylim=pd$plot$limy,
+    col=pd$plot$cols[3],
+    pch=pd$plot$pchs[3])
+  par(new=TRUE)
+  plot(
+    pd$data$time,
+    pd$data$scaled_integral,
+    xlab=pd$plot$labx,
+    ylab=pd$plot$laby,
+    ylim=pd$plot$limy,
+    col=pd$plot$cols[4],
+    pch=pd$plot$pchs[4])
+  par(new=TRUE)
+  plot(
+    pd$data$time,
+    pd$data$derivative,
+    xlab=pd$plot$labx,
+    ylab=pd$plot$laby,
+    ylim=pd$plot$limy,
+    col=pd$plot$cols[5],
+    pch=pd$plot$pchs[5])
+  legend(
+    x=600,
+    y=410,
+    legend=pd$plot$leg,
+    col=pd$plot$cols,
+    pch=pd$plot$pchs)
+  title(main = pd$plot$title, sub = pd$plot$suv)
+}
+
+creategenerictable <- function(pd) {
+  kable(gentable(pd)) %>%
+    kable_styling(full_width = F) %>%
+    column_spec(1, bold = T, border_right = T) %>%
+    column_spec(2, border_right = T)
+}
+
+createtuningtable <- function(pd) {
+  kable(tuningtable(pd)) %>%
+    kable_styling(full_width = F) %>%
+    column_spec(1, bold = T, border_right = T) %>%
+    column_spec(2, border_right = T)
+}
+
+createcalculationstable <- function(pd) {
+  kable(calctable(pd)) %>%
+    kable_styling(full_width = F) %>%
+    column_spec(1, bold = T, border_right = T) %>%
+    column_spec(2, border_right = T)}
+
+createdetailtable <- function(pd) {
+    kable(detailtable(pd)) %>%
+    kable_styling(full_width = F) %>%
+    column_spec(1, bold = T, border_right = T) %>%
+    column_spec(2, border_right = T)
+}
+
+#getwd()
+
+p200413c <- processpidformd("../pid/csv/200413c.csv")
+p200414a <- processpidformd("../pid/csv/200414a.csv")
+p200414b <- processpidformd("../pid/csv/200414b.csv")
+p200414c <- processpidformd("../pid/csv/200414c.csv")
+p200415a <- processpidformd("../pid/csv/200415a.csv")
+p200415b <- processpidformd("../pid/csv/200415b.csv")
+
+```
+
+## Summary
+
+```{r echo = FALSE, result = 'hide'}
+summarytable <- data.frame(
+    Run = c(
+      "2020-04-13 C",
+      "2020-04-14 A",
+      "2020-04-14 B",
+      "2020-04-14 C",
+      "2020-04-15 A",
+      "2020-04-15 B"),
+    Kp = c(
+      p200413c$data$kp,
+      p200414a$data$kp,
+      p200414b$data$kp,
+      p200414c$data$kp,
+      p200415a$data$kp,
+      p200415b$data$kp),
+    Ki = c(
+      p200413c$data$ki,
+      p200414a$data$ki,
+      p200414b$data$ki,
+      p200414c$data$ki,
+      p200415a$data$ki,
+      p200415b$data$ki),
+    Kd = c(
+      p200413c$data$kd,
+      p200414a$data$kd,
+      p200414b$data$kd,
+      p200414c$data$kd,
+      p200415a$data$kd,
+      p200415b$data$kd),
+    Setpoint = c(
+      p200413c$calculations$fixed_setpoint,
+      p200414a$calculations$fixed_setpoint,
+      p200414b$calculations$fixed_setpoint,
+      p200414c$calculations$fixed_setpoint,
+      p200415a$calculations$fixed_setpoint,
+      p200415b$calculations$fixed_setpoint),
+    Peak = c(
+      p200413c$calculations$maximum_temperature,
+      p200414a$calculations$maximum_temperature,
+      p200414b$calculations$maximum_temperature,
+      p200414c$calculations$maximum_temperature,
+      p200415a$calculations$maximum_temperature,
+      p200415b$calculations$maximum_temperature),
+     "Peak Error" = c(
+      p200413c$calculations$peak_error,
+      p200414a$calculations$peak_error,
+      p200414b$calculations$peak_error,
+      p200414c$calculations$peak_error,
+      p200415a$calculations$peak_error,
+      p200415b$calculations$peak_error),
+    "General Error" = c(
+      p200413c$calculations$diffsqrt,
+      p200414a$calculations$diffsqrt,
+      p200414b$calculations$diffsqrt,
+      p200414c$calculations$diffsqrt,
+      p200415a$calculations$diffsqrt,
+      p200415b$calculations$diffsqrt))
+kable(summarytable) %>%
+  kable_styling(full_width = F) %>%
+  column_spec(1, bold = T, border_right = T) %>%
+  column_spec(2, border_right = T) %>%
+  column_spec(3, border_right = T) %>%
+  column_spec(4, border_right = T) %>%
+  column_spec(5, border_right = T) %>%
+  column_spec(6, border_right = T) %>%
+  column_spec(7, border_right = T) %>%
+  column_spec(8, border_right = T)
+```
+
+## PID tuning 2020-04-13 C
+
+```{r echo = FALSE, result = 'hide'}
+data <- p200413c
+```
+
+Time scale is from `r data$calculations$timescale$minimum` to `r data$calculations$timescale$maximum`
+
+The count is `r data$calculations$count`
+
+### General Parameters
+
+```{r echo = FALSE, result = 'asis'}
+creategenerictable(data)
+```
+
+### Tuning Parameters
+
+```{r echo = FALSE, result = 'asis'}
+createtuningtable(data)
+```
+
+### Calculated Values
+
+```{r echo = FALSE, result = 'asis'}
+createcalculationstable(data)
+```
+
+
+### Calculation Details
+
+```{r echo = FALSE, result = 'asis'}
+createdetailtable(data)
+```
+
+### Chart
+
+```{r echo=FALSE}
+generateplot(data)
+```
+
+## PID tuning 2020-04-14 A
+
+```{r echo = FALSE, result = 'hide'}
+data <- p200414a
+```
+
+Time scale is from `r data$calculations$timescale$minimum` to `r data$calculations$timescale$maximum`
+
+The count is `r data$calculations$count`
+
+### General Parameters
+
+```{r echo = FALSE, result = 'asis'}
+creategenerictable(data)
+```
+
+### Tuning Parameters
+
+```{r echo = FALSE, result = 'asis'}
+createtuningtable(data)
+```
+
+### Calculated Values
+
+```{r echo = FALSE, result = 'asis'}
+createcalculationstable(data)
+```
+
+
+### Calculation Details
+
+```{r echo = FALSE, result = 'asis'}
+createdetailtable(data)
+```
+
+### Chart
+
+```{r echo=FALSE}
+generateplot(data)
+```
+
+
+## PID tuning 2020-04-14 B
+
+```{r echo = FALSE, result = 'hide'}
+data <- p200414b
+```
+
+Time scale is from `r data$calculations$timescale$minimum` to `r data$calculations$timescale$maximum`
+
+The count is `r data$calculations$count`
+
+### General Parameters
+
+```{r echo = FALSE, result = 'asis'}
+creategenerictable(data)
+```
+
+### Tuning Parameters
+
+```{r echo = FALSE, result = 'asis'}
+createtuningtable(data)
+```
+
+### Calculated Values
+
+```{r echo = FALSE, result = 'asis'}
+createcalculationstable(data)
+```
+
+
+### Calculation Details
+
+```{r echo = FALSE, result = 'asis'}
+createdetailtable(data)
+```
+
+### Chart
+
+```{r echo=FALSE}
+generateplot(data)
+```
+
+
+## PID tuning 2020-04-14 C
+
+```{r echo = FALSE, result = 'hide'}
+data <- p200414c
+```
+
+Time scale is from `r data$calculations$timescale$minimum` to `r data$calculations$timescale$maximum`
+
+The count is `r data$calculations$count`
+
+### General Parameters
+
+```{r echo = FALSE, result = 'asis'}
+creategenerictable(data)
+```
+
+### Tuning Parameters
+
+```{r echo = FALSE, result = 'asis'}
+createtuningtable(data)
+```
+
+### Calculated Values
+
+```{r echo = FALSE, result = 'asis'}
+createcalculationstable(data)
+```
+
+
+### Calculation Details
+
+```{r echo = FALSE, result = 'asis'}
+createdetailtable(data)
+```
+
+### Chart
+
+```{r echo=FALSE}
+generateplot(data)
+```
+
+
+
+
+## PID tuning 2020-04-15 A
+
+```{r echo = FALSE, result = 'hide'}
+data <- p200415a
+```
+
+Time scale is from `r data$calculations$timescale$minimum` to `r data$calculations$timescale$maximum`
+
+The count is `r data$calculations$count`
+
+### General Parameters
+
+```{r echo = FALSE, result = 'asis'}
+creategenerictable(data)
+```
+
+### Tuning Parameters
+
+```{r echo = FALSE, result = 'asis'}
+createtuningtable(data)
+```
+
+### Calculated Values
+
+```{r echo = FALSE, result = 'asis'}
+createcalculationstable(data)
+```
+
+
+### Calculation Details
+
+```{r echo = FALSE, result = 'asis'}
+createdetailtable(data)
+```
+
+### Chart
+
+```{r echo=FALSE}
+generateplot(data)
+```
+
+
+## PID tuning 2020-04-15 B
+
+```{r echo = FALSE, result = 'hide'}
+data <- p200415b
+```
+
+Time scale is from `r data$calculations$timescale$minimum` to `r data$calculations$timescale$maximum`
+
+The count is `r data$calculations$count`
+
+### General Parameters
+
+```{r echo = FALSE, result = 'asis'}
+creategenerictable(data)
+```
+
+### Tuning Parameters
+
+```{r echo = FALSE, result = 'asis'}
+createtuningtable(data)
+```
+
+### Calculated Values
+
+```{r echo = FALSE, result = 'asis'}
+createcalculationstable(data)
+```
+
+
+### Calculation Details
+
+```{r echo = FALSE, result = 'asis'}
+createdetailtable(data)
+```
+
+### Chart
+
+```{r echo=FALSE}
+generateplot(data)
+```
