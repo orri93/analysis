@@ -1,0 +1,87 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+# Eiming
+
+## Summary
+
+```{r summary}
+
+eiming2 <- read.csv2('../../var/sandbox/eiming2.csv', header = FALSE, stringsAsFactors = FALSE)
+
+e2v2 <- eiming2$V2
+e2v3 <- as.numeric(eiming2$V3)
+e2v4 <- as.numeric(eiming2$V4)
+
+e2v2t <- hms(e2v2)
+e2v2e <- e2v2t - e2v2t[1]
+e2v2s <- seconds(e2v2e)
+e2v2n <- as.numeric(e2v2s)
+
+e2 <- data.frame(e2v2n, e2v3, e2v4)
+
+summary(e2)
+
+```
+
+## Plot
+
+```{r plot}
+
+plot(e2v2n, e2v4, main = "Eiming Nr. 2", xlab="s", ylab="T°", type="l",col="blue")
+lines(e2v2n, e2v3, col="red")
+legend("topright", c("T1", "T2"), fill=c("blue", "red"))
+#points(e2v2n, e2v3)
+
+
+```
+
+## Down sample
+
+```{r downsample}
+
+d <- 14
+nr <- nrow(e2)
+rc <- nr / d
+
+e2m2n <- rep(NA, rc)
+e2m3 <- rep(NA, rc)
+e2m4 <- rep(NA, rc)
+
+n <- 1
+for(i in 1:rc) {
+  s2n <- 0
+  s3 <- 0.0
+  s4 <- 0.0
+  for(j in 1:d) {
+    s2n <- s2n + e2v2n[n]
+    s3 <- s3 + e2v3[n]
+    s4 <- s4 + e2v4[n]
+    n <- n + 1
+  }
+  e2m2n[i] = s2n / d
+  e2m3[i] = s3 / d
+  e2m4[i] = s4 / d
+}
+
+#e2m2n <- zoo::rollmean(e2v2n, k, fill = NA)
+#e2m3 <- zoo::rollmean(e2v3, k, fill = NA)
+#e2m4 <- zoo::rollmean(e2v4, k, fill = NA)
+
+e2m <- data.frame(e2m2n, e2m3, e2m4)
+
+summary(e2m)
+
+```
+
+## ggplot
+
+```{r reframe, echo=FALSE, message=FALSE, warning=FALSE}
+
+library(ggplot2)
+
+ggplot(data = e2m) + geom_point(mapping = aes(x = e2m2n, y = e2m4), color = "blue", shape = 4) + geom_point(mapping = aes(x = e2m2n, y = e2m3), color = "red", shape = 8)
+
+```

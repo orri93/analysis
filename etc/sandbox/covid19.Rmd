@@ -1,0 +1,21 @@
+---
+title: "COVID-19 experimental Notebook"
+output: html_notebook
+---
+
+See [How to calculate a rolling average in R](https://www.storybench.org/how-to-calculate-a-rolling-average-in-r/)
+
+```{r packages and data}
+
+library(zoo) # moving averages        
+library(tidyverse) # all tidyverse packages
+library(hrbrthemes) # themes for graphs
+library(socviz) # %nin%
+library(geofacet) # maps
+library(usmap) # lat and long
+library(socviz) # for %nin%
+library(ggmap) # mapping
+
+
+```
+
