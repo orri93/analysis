@@ -3,7 +3,11 @@ title: "COVID-19 experimental Notebook"
 output: html_notebook
 ---
 
+# COVID-19 experimental Notebook
+
 See [How to calculate a rolling average in R](https://www.storybench.org/how-to-calculate-a-rolling-average-in-r/)
+
+## Packages and data loaded
 
 ```{r packages and data}
 
@@ -15,6 +19,201 @@ library(geofacet) # maps
 library(usmap) # lat and long
 library(socviz) # for %nin%
 library(ggmap) # mapping
+library(dplyr)
+
+JHCovid19States <- readr::read_csv("https://raw.githubusercontent.com/mjfrigaard/storybench/master/drafts/data/jhsph/2020-06-22-JHCovid19States.csv")
+
+summary(JHCovid19States)
+
+
+```
+
+## Data Frame
+
+
+```{r data frame}
+
+utils::head(JHCovid19States)
+
+
+```
+
+## Calculating rolling averages
+
+```{r rolling averages}
+
+JHCovid19StatesRolling <- JHCovid19States %>% dplyr::arrange(desc(state)) %>%  dplyr::group_by(state) %>% dplyr::mutate(death_03da = zoo::rollmean(deaths, k = 3, fill = NA), death_05da = zoo::rollmean(deaths, k = 5, fill = NA), death_07da = zoo::rollmean(deaths, k = 7, fill = NA), death_15da = zoo::rollmean(deaths, k = 15, fill = NA), death_21da = zoo::rollmean(deaths, k = 21, fill = NA)) %>% dplyr::ungroup()
+
+summary(JHCovid19StatesRolling)
+
+
+```
+
+## Florida
+
+```{r florida}
+
+JHCovid19StatesRolling %>% 
+  dplyr::arrange(date) %>% 
+  dplyr::filter(state == "Florida") %>% 
+  dplyr::select(state,
+                date,
+                deaths,
+                death_03da:death_07da) %>% 
+  utils::head(7)
+
+
+```
+
+## Visualize
+
+```{r visualize 1, warning=FALSE}
+
+JHCovid19StatesRolling %>% dplyr::filter(state == "Florida") %>% tidyr::pivot_longer(names_to = "rolling_mean_key", values_to = "rolling_mean_value", cols = c(deaths, death_03da, death_21da)) %>%
+  # after may 15
+  dplyr::filter(date >= lubridate::as_date("2020-05-15") &
+  # before November 20
+  date <= lubridate::as_date("2020-11-20")) %>% ggplot2::ggplot(aes(x = date, y = rolling_mean_value, color = rolling_mean_key)) +
+  ggplot2::geom_line() +   
+  ggplot2::labs(title = "Florida's rolling average total COVID deaths", subtitle = "Between 2020-05-15 and 2020-06-20", y = "Deaths", color = "Metric", x = "Date") +
+  hrbrthemes::theme_ipsum_rc()
+
+
+```
+
+```{r visualize 2, warning=FALSE}
+
+JHCovid19StatesRolling %>% dplyr::filter(state == "South Carolina") %>% 
+  tidyr::pivot_longer(names_to = "rolling_mean_key", 
+                    values_to = "rolling_mean_value", 
+                    cols = c(deaths, 
+                             death_03da, 
+                             death_21da)) %>%
+  dplyr::filter(date >= lubridate::as_date("2020-05-15") & # after may 15
+                  date <= lubridate::as_date("2020-06-20")) %>% # before june 20
+  ggplot2::ggplot(aes(x = date, 
+                      y = rolling_mean_value, 
+                      color = rolling_mean_key)) +
+  ggplot2::geom_line() +   
+  ggplot2::labs(title = "South Carolina's rolling average total COVID deaths", 
+                  subtitle = "Between 2020-05-15 and 2020-06-20",
+                  y = "Deaths", 
+                  color = "Metric",
+                  x = "Date") + 
+  hrbrthemes::theme_ipsum_rc()
+
+
+```
+
+```{r new cases, message=FALSE, warning=FALSE}
+
+JHCovid19NewCases <- JHCovid19StatesRolling %>%
+  # group this by state and day
+  group_by(state, date) %>% 
+  # get total deaths per day
+  dplyr::summarize(
+    confirmed_sum = (sum(confirmed, na.rm = TRUE))) %>% 
+  # calculate 'new deaths' = todays deaths - yesterdays deaths
+  mutate(new_confirmed_cases = confirmed_sum - dplyr::lag(x = confirmed_sum, n = 1, 
+                                              order_by = date)) %>% 
+  dplyr::select(state, 
+                new_confirmed_cases, 
+                date) %>% 
+  # join back to JHCovid19
+  dplyr::left_join(., y = JHCovid19States, 
+                   by = c("state", "date")) %>% 
+  # reorganize
+  dplyr::select(state,
+                state_abbr,
+                date,
+                month_abbr,
+                day,
+                confirmed,
+                dplyr::contains("confirm"),
+                dplyr::contains("death"),
+                lat, 
+                long, 
+                dplyr::ends_with("rate"))
+
+# check SC
+JHCovid19NewCases %>% 
+  dplyr::filter(state == "South Carolina") %>% 
+  dplyr::select(state_abbr, date, confirmed, new_confirmed_cases) %>% 
+  utils::head()
+
+
+JHCovid19NewCases <- JHCovid19NewCases %>%
+    dplyr::group_by(state) %>% 
+    dplyr::mutate(
+      new_conf_03da = zoo::rollmean(new_confirmed_cases, k = 3, fill = NA),
+      new_conf_05da = zoo::rollmean(new_confirmed_cases, k = 5, fill = NA),
+      new_conf_07da = zoo::rollmean(new_confirmed_cases, k = 7, fill = NA),
+      new_conf_15da = zoo::rollmean(new_confirmed_cases, k = 15, fill = NA),
+      new_conf_21da = zoo::rollmean(new_confirmed_cases, k = 21, fill = NA)) %>% 
+  dplyr::ungroup()
+
+
+```
+
+```{r column graph, warning=FALSE}
+
+
+JHCovid19NewCasesJun <- JHCovid19NewCases %>% 
+      dplyr::filter(date >= lubridate::as_date("2020-06-01") & # after june 1
+                  date <= lubridate::as_date("2020-06-20")) # before june 20
+
+JHCovid19NewCasesJun %>% 
+  dplyr::filter(state == "Florida") %>% 
+    ggplot2::ggplot(aes(x = day, 
+                      y = new_confirmed_cases)) +
+    geom_col(alpha = 1/10) + 
+    ggplot2::labs(title = "Florida's new COVID cases", 
+                  subtitle = "Rolling average between 2020-06-01 and 2020-06-20",
+                  y = "New Cases", 
+                  x = "Day") + 
+  hrbrthemes::theme_modern_rc()
+
+
+```
+
+```{r tidy, warning=FALSE}
+
+
+FLNewCasesTidy <- JHCovid19NewCasesJun %>% 
+  # only Florida
+  dplyr::filter(state == "Florida") %>% 
+  # pivot longer
+  tidyr::pivot_longer(names_to = "new_conf_av_key", 
+                    values_to = "new_conf_av_value", 
+                    cols = c(new_conf_03da,
+                             new_conf_05da,
+                             new_conf_07da)) %>% 
+  # reduce vars
+  dplyr::select(day, 
+                date, 
+                state, 
+                state_abbr, 
+                new_conf_av_value, 
+                new_conf_av_key)
+
+JHCovid19NewCasesJun %>% 
+  # florida new cases 
+  dplyr::filter(state == "Florida") %>% 
+    ggplot2::ggplot(aes(x = day, 
+                      y = new_confirmed_cases, 
+                      group(date))) +
+    geom_col(alpha = 1/10) + 
+  # add the line with new data
+    ggplot2::geom_line(data = FLNewCasesTidy, 
+                       mapping = aes(x = day, 
+                                     y = new_conf_av_value, 
+                                     color = new_conf_av_key)) +   
+    ggplot2::labs(title = "Florida's new COVID cases", 
+                  subtitle = "Rolling average between 2020-06-01 and 2020-06-20",
+                  y = "New Cases", 
+                  color = "Metric",
+                  x = "Day") + 
+    hrbrthemes::theme_modern_rc()
 
 
 ```
