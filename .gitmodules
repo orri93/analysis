@@ -7,3 +7,6 @@
 [submodule "extern/jpnetomd"]
 	path = extern/jpnetomd
 	url = https://github.com/jpneto/Markdowns.git
+[submodule "extern/hadleyr4ds"]
+	path = extern/hadleyr4ds
+	url = https://github.com/hadley/r4ds.git

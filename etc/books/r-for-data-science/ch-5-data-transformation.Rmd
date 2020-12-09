@@ -1,0 +1,349 @@
+---
+title: "Chapter 5 Data Transformation Notebook"
+output: html_notebook
+---
+
+# R for Data Science
+
+## Chapter 5 Data Transformation
+
+### 5.1.1 Prerequisites
+
+```{r prerequisites}
+library(nycflights13)
+library(tidyverse)
+```
+
+### 5.1.2 nycflights13
+
+```{r f}
+
+flights
+
+```
+
+### 5.1.3 dplyr basics
+
+In this chapter you are going to learn the five key dplyr functions that allow you to solve the vast majority of your data manipulation challenges:
+
+* Pick observations by their values (filter()).
+* Reorder the rows (arrange()).
+* Pick variables by their names (select()).
+* Create new variables with functions of existing variables (mutate()).
+* Collapse many values down to a single summary (summarise()).
+
+### 5.2 Filter rows with filter()
+
+filter() allows you to subset observations based on their values. The first argument is the name of the data frame. The second and subsequent arguments are the expressions that filter the data frame. For example, we can select all flights on January 1st with:
+
+```{r filter 1}
+
+filter(flights, month == 1, day == 1)
+
+```
+
+When you run that line of code, dplyr executes the filtering operation and returns a new data frame. dplyr functions never modify their inputs, so if you want to save the result, you’ll need to use the assignment operator, <-:
+
+```{r filter 2}
+
+jan1 <- filter(flights, month == 1, day == 1)
+
+```
+
+R either prints out the results, or saves them to a variable. If you want to do both, you can wrap the assignment in parentheses:
+
+```{r filter 3}
+
+(dec25 <- filter(flights, month == 12, day == 25))
+
+```
+
+### 5.2.1 Comparisons
+
+The order of operations doesn’t work like English. You can’t write filter(flights, month == (11 | 12)), which you might literally translate into “finds all flights that departed in November or December”. Instead it finds all months that equal 11 | 12, an expression that evaluates to TRUE. In a numeric context (like here), TRUE becomes one, so this finds all flights in January, not November or December. This is quite confusing!
+
+A useful short-hand for this problem is x %in% y. This will select every row where x is one of the values in y. We could use it to rewrite the code above:
+
+```{r filter 4}
+
+nov_dec <- filter(flights, month %in% c(11, 12))
+
+```
+
+### 5.3 Arrange rows with arrange()
+
+arrange() works similarly to filter() except that instead of selecting rows, it changes their *order*. It takes a data frame and a set of column names (or more complicated expressions) to order by. If you provide more than one column name, each additional column will be used to break ties in the values of preceding columns:
+
+```{r arrange 1}
+
+arrange(flights, year, month, day)
+
+```
+
+Use desc() to re-order by a column in descending order:
+
+```{r arrange 2}
+
+arrange(flights, desc(dep_delay))
+
+```
+
+Missing values are always sorted at the end:
+
+```{r arrange 3}
+
+df <- tibble(x = c(5, 2, NA))
+
+arrange(df, x)
+
+arrange(df, desc(x))
+
+
+```
+
+### 5.4 Select columns with select()
+
+It’s not uncommon to get datasets with hundreds or even thousands of variables. In this case, the first challenge is often narrowing in on the variables you’re actually interested in. select() allows you to rapidly zoom in on a useful subset using operations based on the names of the variables.
+
+select() is not terribly useful with the flights data because we only have 19 variables, but you can still get the general idea:
+
+```{r select 1}
+
+select(flights, year, month, day)
+
+```
+
+Select all columns between year and day (inclusive)
+
+```{r select 2}
+
+select(flights, year:day)
+
+```
+
+Select all columns except those from year to day (inclusive)
+
+```{r select 3}
+
+select(flights, -(year:day))
+
+```
+
+select() can be used to rename variables, but it’s rarely useful because it drops all of the variables not explicitly mentioned. Instead, use rename(), which is a variant of select() that keeps all the variables that aren’t explicitly mentioned:
+
+```{r rename 1}
+
+rename(flights, tail_num = tailnum)
+
+```
+
+Another option is to use select() in conjunction with the everything() helper. This is useful if you have a handful of variables you’d like to move to the start of the data frame.
+
+```{r select 4}
+
+select(flights, time_hour, air_time, everything())
+
+```
+
+### 5.5 Add new variables with mutate()
+
+Besides selecting sets of existing columns, it’s often useful to add new columns that are functions of existing columns. That’s the job of mutate().
+
+mutate() always adds new columns at the end of your dataset so we’ll start by creating a narrower dataset so we can see the new variables. Remember that when you’re in RStudio, the easiest way to see all the columns is View().
+
+```{r mutate 1}
+
+flights_sml <- select(flights, 
+  year:day, 
+  ends_with("delay"), 
+  distance, 
+  air_time
+)
+mutate(flights_sml,
+  gain = dep_delay - arr_delay,
+  speed = distance / air_time * 60
+)
+
+```
+
+Note that you can refer to columns that you’ve just created:
+
+```{r mutate 2}
+
+mutate(flights_sml,
+  gain = dep_delay - arr_delay,
+  hours = air_time / 60,
+  gain_per_hour = gain / hours
+)
+
+```
+
+If you only want to keep the new variables, use transmute():
+
+```{r mutate 3}
+
+transmute(flights,
+  gain = dep_delay - arr_delay,
+  hours = air_time / 60,
+  gain_per_hour = gain / hours
+)
+
+```
+
+Modular arithmetic: %/% (integer division) and %% (remainder), where x == y * (x %/% y) + (x %% y). Modular arithmetic is a handy tool because it allows you to break integers up into pieces. For example, in the flights dataset, you can compute hour and minute from dep_time with:
+
+```{r mutate 4}
+
+transmute(flights,
+  dep_time,
+  hour = dep_time %/% 100,
+  minute = dep_time %% 100
+)
+
+```
+
+### 5.6 Grouped summaries with summarise()
+
+The last key verb is summarise(). It collapses a data frame to a single row:
+
+```{r summarise 1}
+
+summarise(flights, delay = mean(dep_delay, na.rm = TRUE))
+
+```
+
+summarise() is not terribly useful unless we pair it with group_by(). This changes the unit of analysis from the complete dataset to individual groups. Then, when you use the dplyr verbs on a grouped data frame they’ll be automatically applied “by group”. For example, if we applied exactly the same code to a data frame grouped by date, we get the average delay per date:
+
+```{r summarise 2}
+
+by_day <- group_by(flights, year, month, day)
+summarise(by_day, delay = mean(dep_delay, na.rm = TRUE))
+
+```
+
+### 5.6.1 Combining multiple operations with the pipe
+
+Imagine that we want to explore the relationship between the distance and average delay for each location. Using what you know about dplyr, you might write code like this:
+
+```{r pipe 1, message=FALSE}
+
+by_dest <- group_by(flights, dest)
+delay <- summarise(by_dest,
+  count = n(),
+  dist = mean(distance, na.rm = TRUE),
+  delay = mean(arr_delay, na.rm = TRUE)
+)
+#> `summarise()` ungrouping output (override with `.groups` argument)
+delay <- filter(delay, count > 20, dest != "HNL")
+
+# It looks like delays increase with distance up to ~750 miles 
+# and then decrease. Maybe as flights get longer there's more 
+# ability to make up delays in the air?
+ggplot(data = delay, mapping = aes(x = dist, y = delay)) +
+  geom_point(aes(size = count), alpha = 1/3) +
+  geom_smooth(se = FALSE)
+
+```
+
+There’s another way to tackle the same problem with the pipe, %>%:
+
+```{r pipe 2}
+
+delays <- flights %>% 
+  group_by(dest) %>% 
+  summarise(
+    count = n(),
+    dist = mean(distance, na.rm = TRUE),
+    delay = mean(arr_delay, na.rm = TRUE)
+  ) %>% 
+  filter(count > 20, dest != "HNL")
+
+```
+This focuses on the transformations, not what’s being transformed, which makes the code easier to read. You can read it as a series of imperative statements: group, then summarise, then filter. As suggested by this reading, a good way to pronounce %>% when reading code is “then”.
+
+### 5.6.2 Missing values
+
+You may have wondered about the na.rm argument we used above. What happens if we don’t set it?
+
+```{r missing values 1, message=FALSE}
+
+flights %>% 
+  group_by(year, month, day) %>% 
+  summarise(mean = mean(dep_delay))
+
+```
+
+We get a lot of missing values! That’s because aggregation functions obey the usual rule of missing values: if there’s any missing value in the input, the output will be a missing value. Fortunately, all aggregation functions have an na.rm argument which removes the missing values prior to computation:
+
+```{r missing values 2, message=FALSE}
+
+flights %>% 
+  group_by(year, month, day) %>% 
+  summarise(mean = mean(dep_delay, na.rm = TRUE))
+
+```
+
+In this case, where missing values represent cancelled flights, we could also tackle the problem by first removing the cancelled flights. We’ll save this dataset so we can reuse it in the next few examples.
+
+```{r missing values 3, message=FALSE}
+
+not_cancelled <- flights %>% 
+  filter(!is.na(dep_delay), !is.na(arr_delay))
+
+not_cancelled %>% 
+  group_by(year, month, day) %>% 
+  summarise(mean = mean(dep_delay))
+
+```
+
+### 5.6.3 Counts
+
+Whenever you do any aggregation, it’s always a good idea to include either a count (n()), or a count of non-missing values (sum(!is.na(x))). That way you can check that you’re not drawing conclusions based on very small amounts of data. For example, let’s look at the planes (identified by their tail number) that have the highest average delays:
+
+```{r counts 1, message=FALSE}
+
+delays <- not_cancelled %>% 
+  group_by(tailnum) %>% 
+  summarise(
+    delay = mean(arr_delay)
+  )
+#> `summarise()` ungrouping output (override with `.groups` argument)
+
+ggplot(data = delays, mapping = aes(x = delay)) + 
+  geom_freqpoly(binwidth = 10)
+
+```
+
+Wow, there are some planes that have an average delay of 5 hours (300 minutes)!
+
+The story is actually a little more nuanced. We can get more insight if we draw a scatterplot of number of flights vs. average delay:
+
+```{r counts 2, message=FALSE}
+
+delays <- not_cancelled %>% 
+  group_by(tailnum) %>% 
+  summarise(
+    delay = mean(arr_delay, na.rm = TRUE),
+    n = n()
+  )
+#> `summarise()` ungrouping output (override with `.groups` argument)
+
+ggplot(data = delays, mapping = aes(x = n, y = delay)) + 
+  geom_point(alpha = 1/10)
+
+```
+
+Not surprisingly, there is much greater variation in the average delay when there are few flights. The shape of this plot is very characteristic: whenever you plot a mean (or other summary) vs. group size, you’ll see that the variation decreases as the sample size increases.
+
+When looking at this sort of plot, it’s often useful to filter out the groups with the smallest numbers of observations, so you can see more of the pattern and less of the extreme variation in the smallest groups. This is what the following code does, as well as showing you a handy pattern for integrating ggplot2 into dplyr flows. It’s a bit painful that you have to switch from %>% to +, but once you get the hang of it, it’s quite convenient.
+
+```{r counts 3}
+
+delays %>% 
+  filter(n > 25) %>% 
+  ggplot(mapping = aes(x = n, y = delay)) + 
+    geom_point(alpha = 1/10)
+
+```
+
+# End
