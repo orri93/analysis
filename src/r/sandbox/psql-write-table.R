@@ -1,4 +1,4 @@
-# PostgreSQL select example
+# PostgreSQL Write Table example
 #
 # See also https://www.datacareer.de/blog/connect-to-postgresql-with-r-a-step-by-step-example/
 
