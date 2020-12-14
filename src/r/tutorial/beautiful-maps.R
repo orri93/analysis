@@ -1,6 +1,8 @@
 # Following Online Tutorial
-# Drawing beautiful maps programmatically with R, sf and ggplot2
-# See https://www.r-spatial.org/r/2018/10/25/ggplot2-sf.html
+# Drawing beautiful maps programmatically with R, sf and ggplot2 See
+# https://www.r-spatial.org/r/2018/10/25/ggplot2-sf.html
+# https://www.r-spatial.org/r/2018/10/25/ggplot2-sf-2.html
+# https://www.r-spatial.org/r/2018/10/25/ggplot2-sf-3.html
 
 # Installing
 # install.packages('sf')
