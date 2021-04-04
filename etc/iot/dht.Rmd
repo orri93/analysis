@@ -1,0 +1,91 @@
+---
+title: "IoT DHT Humidity and Temperature Notebook"
+output:
+  html_document:
+    df_print: paged
+---
+
+# Dependencies
+
+```{r dependencies}
+library(tidyverse)
+library(RPostgreSQL)
+```
+
+# Loading Data
+
+```{r loading data}
+connection = dbConnect(
+  "PostgreSQL",
+  host = "192.168.10.168",
+  port = 5432,
+  user = "orri",
+  password = "Bios93",
+  dbname = "iot")
+dht <- dbReadTable(connection, "dht")
+dbDisconnect(connection)
+```
+
+# Filter and Order
+
+```{r order}
+dht <- dht %>% filter(ts > "2020-12-29 00:00:00") %>% arrange(ts)
+```
+
+# Plots
+
+## Humidity
+
+```{r plot humidity, message=FALSE, warning=FALSE}
+ggplot(data = dht, mapping = aes(x = ts, y = rh)) +
+  geom_point() +
+  geom_smooth()
+```
+
+## Temperature
+
+```{r plot temperature, message=FALSE, warning=FALSE}
+ggplot(data = dht, mapping = aes(x = ts, y = t)) +
+  geom_point() +
+  geom_smooth()
+```
+
+## Measurements
+
+```{r plot measurements, message=FALSE, warning=FALSE}
+ggplot(data = dht, mapping = aes(x = rh, y = t)) +
+  geom_count(mapping = aes(color = ..n.., size = ..n..)) +
+  guides(color = 'legend')
+```
+
+# Summary
+
+```{r statistics}
+dht %>% select(ts, rh, t) %>% summary()
+```
+
+# Statistics
+
+## Temperature
+
+Mean
+```{r statistics t mean}
+mean(dht$t, na.rm = TRUE)
+```
+
+SD
+```{r statistics t sd}
+sd(dht$t, na.rm = TRUE)
+```
+
+## Humidity
+
+Mean
+```{r statistics rh mean}
+mean(dht$rh, na.rm = TRUE)
+```
+
+SD
+```{r statistics rh sd}
+sd(dht$rh, na.rm = TRUE)
+```

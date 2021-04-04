@@ -1,0 +1,42 @@
+---
+title: "Exploring NPD Facility"
+output: html_notebook
+---
+
+# Exploring Facility data from Norwegian Petroleum Directorate (NPD) www.npd.no
+
+## Prerequisites
+
+```{r prerequisites}
+library(rnaturalearth)
+library(rnaturalearthdata)
+library(tidyverse)
+library(mapview)
+library(biogeo)     # for dms2dd
+```
+
+## Loading Data
+
+```{r load}
+npdfacility <- read.csv(
+  '../../var/npd/facility/fclPoint.csv',
+  fileEncoding = 'UTF-8')
+```
+
+## Summary
+
+```{r summary}
+summary(npdfacility)
+```
+
+## Filter
+
+Filter out rows without geometry data
+
+```{r filter}
+npdfacility <- npdfacility %>% filter(
+  !is.na(fclNsDeg), !is.na(fclEwDeg),
+  !is.na(fclNsMin), !is.na(fclEwMin),
+  !is.na(fclNsSec), !is.na(fclEwSec))
+```
+
