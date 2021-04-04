@@ -1,0 +1,102 @@
+---
+title: "R 3D Notebook"
+output:
+  html_document:
+    df_print: paged
+---
+
+# Dependencies
+
+```{r dependencies}
+library(sphereplot)
+library(rgl)
+knitr::knit_hooks$set(webgl = hook_webgl)
+```
+
+# Prepare the data
+
+We’ll use the iris data set in the following examples:
+
+```{r}
+data(iris)
+head(iris)
+```
+
+```{r}
+x <- sep.l <- iris$Sepal.Length
+y <- pet.l <- iris$Petal.Length
+z <- sep.w <- iris$Sepal.Width
+```
+
+# Start and close RGL device
+
+The functions below are used to manage the RGL device:
+
+* rgl.open(): Opens a new device
+* rgl.close(): Closes the current device
+* rgl.clear(): Clears the current device
+* rgl.cur(): Returns the active device ID
+* rgl.quit(): Shutdowns the RGL device system
+
+# 3D scatter plot
+
+The function rgl.points() is used to draw a 3D scatter plot:
+
+```{r rgl-points, webgl=TRUE}
+rgl.open() # Open a new RGL device
+rgl.points(x, y, z, color ="lightgray") # Scatter plot
+```
+
+# Change the background and point colors
+
+* The function rgl.bg(color) can be used to setup the background environment of the scene
+* The argument color is used in the function rgl.points() to change point colors
+
+```{r}
+rgl.open()# Open a new RGL device
+rgl.bg(color = "white") # Setup the background color
+rgl.points(x, y, z, color = "blue", size = 5) # Scatter plot
+```
+
+# Change the shape of points
+
+It’s possible to draw spheres using the functions rgl.spheres() or spheres3d():
+
+```
+spheres3d(x, y = NULL, z = NULL, radius = 1, ...)
+rgl.spheres(x, y = NULL, z = NULL, r, ...)
+```
+
+rgl.spheres() draws spheres with center (x, y, z) and radius r.
+
+* x, y, z : Numeric vector specifying the coordinates for the center of each sphere. The arguments y and z are optional when:
+* x is a matrix or a data frame containing at least 3 columns which will be used as the x, y and z coordinates. Ex: rgl.spheres(iris, r = 0.2)
+* x is a formula of form zvar ~ xvar + yvar (see ?xyz.coords). Ex: rgl.spheres( z ~ x + y, r = 0.2).
+* radius: a vector or single value indicating the radius of spheres
+* …: Material properties. See ?rgl.material for details.
+
+```{r}
+rgl.open()# Open a new RGL device
+rgl.bg(color = "white") # Setup the background color
+rgl.spheres(x, y, z, r = 0.2, color = "grey")
+```
+
+# rgl_init(): A custom function to initialize RGL device
+
+The function rgl_init() will create a new RGL device if requested or if there is no opened device:
+
+```{r}
+#' @param new.device a logical value. If TRUE, creates a new device
+#' @param bg the background color of the device
+#' @param width the width of the device
+rgl_init <- function(new.device = FALSE, bg = "white", width = 640) { 
+  if( new.device | rgl.cur() == 0 ) {
+    rgl.open()
+    par3d(windowRect = 50 + c( 0, 0, width, width ) )
+    rgl.bg(color = bg )
+  }
+  rgl.clear(type = c("shapes", "bboxdeco"))
+  rgl.viewpoint(theta = 15, phi = 20, zoom = 0.7)
+}
+```
+
