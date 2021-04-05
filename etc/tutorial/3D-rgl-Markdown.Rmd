@@ -6,9 +6,10 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
+library(knitr)
 library(rgl)
 knitr::knit_hooks$set(webgl = hook_webgl)
-knitr::opts_chunk$set(echo = TRUE)
+# knitr::opts_chunk$set(echo = TRUE)
 ```
 
 See if it works for this 3D plot after we enable the hook
@@ -20,3 +21,13 @@ y <- rnorm(1000)
 z <- rnorm(1000) + atan2(x,y)
 plot3d(x, y, z, col = rainbow(1000))
 ```
+
+
+```{r webgl=TRUE}
+ids <- with(iris, plot3d(Sepal.Length, Sepal.Width, Petal.Length, 
+                  type="s", col=as.numeric(Species)))
+par3d(mouseMode = "selecting")
+rglwidget(shared = rglShared(ids["data"])) %>% 
+rglMouse()
+```
+
