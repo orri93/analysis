@@ -29,6 +29,9 @@ CMakeSettings.json
 .vs/
 out/
 
+# Visual Studio Code
+.vscode/
+
 # Excel
 ~$*.xlsx
 
@@ -37,3 +40,5 @@ out/
 [Rr]elease
 /bin/
 
+# Build
+/build/

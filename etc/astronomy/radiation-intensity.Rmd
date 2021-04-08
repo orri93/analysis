@@ -1,0 +1,65 @@
+---
+title: "Radiation Intensity"
+author: "Geirmundur Orri Sigurdsson"
+date: "4/8/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Radiation Intensity
+
+Inverse-square law for light and other electromagnetic radiation
+
+See [Inverse-square law](https://en.wikipedia.org/wiki/Inverse-square_law) on Wikipedia
+
+Formula: $$I = \frac{P}{A} = \frac{P}{4\pi r^{^{2}}}$$
+
+Where I is the intensity or power per unit area
+
+Given an antena with radius r gives area A as: $$A = \pi r^{^{2}}$$
+
+Naming with transmitter, antena and solving for power of the transmitter gives: $$P_{transmitter} = 4\pi d^{^{2}}\times \frac{P_{received}}{A_{antena}}$$
+
+where d is the distance
+
+# Formulating as function
+
+```{r function}
+radiation_intensity <- function(distance, Preceived, Rantena) {
+  Aantena <- pi * Rantena * Rantena
+  4 * pi * distance * distance * Preceived / Aantena
+}
+```
+
+# Proxima Centauri
+
+Distance to Proxima Centauri is 4.2465 ly and one ly is 9.46E12 km
+
+See [Proxima Centauri](https://en.wikipedia.org/wiki/Proxima_Centauri) on Wikipedia
+
+```{r distance to Proxima Centauri}
+Dpc <- 4.2465 * 9.46E12 * 1000 # to meters
+```
+
+# Example
+
+1. how powerful does a radio transmitter on Proxima Centauri need to be to detect a signal of 1W with a radio telescope with radius of 100 meter
+
+```{r example 1}
+radiation_intensity(Dpc, 1, 100) / 1E15 # in Petawatt
+```
+
+2. how powerful does a radio transmitter on Proxima Centauri need to be to detect a signal of 0.1W with a radio telescope with radius of 100 meter
+
+```{r example 2}
+radiation_intensity(Dpc, 0.1, 100) / 1E15 # in Petawatt
+```
+
+3. how powerful does a radio transmitter on Proxima Centauri need to be to detect a signal of 10W with the FAST a radio telescope with illuminated radius of 150 meter
+
+```{r example 3}
+radiation_intensity(Dpc, 10, 150) / 1E15 # in Petawatt
+```
