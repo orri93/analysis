@@ -28,7 +28,7 @@ where d is the distance
 # Formulating as function
 
 ```{r function}
-radiation_intensity <- function(distance, Preceived, Rantena) {
+transmitter_power <- function(distance, Preceived, Rantena) {
   Aantena <- pi * Rantena * Rantena
   4 * pi * distance * distance * Preceived / Aantena
 }
@@ -46,20 +46,21 @@ Dpc <- 4.2465 * 9.46E12 * 1000 # to meters
 
 # Example
 
-1. how powerful does a radio transmitter on Proxima Centauri need to be to detect a signal of 1W with a radio telescope with radius of 100 meter
+1. How powerful does a radio transmitter on Proxima Centauri need to be to detect a signal of 1W with a radio telescope with radius of 100 meter
 
 ```{r example 1}
-radiation_intensity(Dpc, 1, 100) / 1E15 # in Petawatt
+transmitter_power(Dpc, 1, 100) / 1E15 # in Petawatt
 ```
 
-2. how powerful does a radio transmitter on Proxima Centauri need to be to detect a signal of 0.1W with a radio telescope with radius of 100 meter
+2. How powerful does a radio transmitter on Proxima Centauri need to be to detect a signal of 0.1W with a radio telescope with radius of 100 meter
 
 ```{r example 2}
-radiation_intensity(Dpc, 0.1, 100) / 1E15 # in Petawatt
+transmitter_power(Dpc, 0.1, 100) / 1E15 # in Petawatt
 ```
 
-3. how powerful does a radio transmitter on Proxima Centauri need to be to detect a signal of 10W with the FAST a radio telescope with illuminated radius of 150 meter
+3. How powerful does a radio transmitter on Proxima Centauri need to be to detect a signal of 0.01mW with the FAST a radio telescope with illuminated radius of 150 meter
 
 ```{r example 3}
-radiation_intensity(Dpc, 10, 150) / 1E15 # in Petawatt
+Preceived <- 0.01 / 1E3
+transmitter_power(Dpc, Preceived, 150) / 1E15 # in Petawatt
 ```
