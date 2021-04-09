@@ -25,14 +25,20 @@ Makefile.Release
 # CMake
 CMakeSettings.json
 
+#
 # Visual Studio
+#
 .vs/
 out/
 
+#
 # Visual Studio Code
+#
 .vscode/
 
+#
 # Excel
+#
 ~$*.xlsx
 
 # Other

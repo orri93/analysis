@@ -4,6 +4,8 @@
 
 #include <cdf.h>
 
+#define PARSE_CDF_FIELD_NAME "FIELDNAM"
+
 static bool welcome();
 static bool display_document_information(CDFid id, const char* fn);
 static bool display_document_attributes(CDFid id, long num);
@@ -234,27 +236,22 @@ bool display_variable_information(CDFid id, const char* vn) {
 
 bool display_variable_values(CDFid id, const char* vn) {
   CDFstatus cdfs;
-  long varnum;
-  long recnum;
-  long indices[1];
-  double value;
+  long varnum, attrnum, datatype, numelements;
   char cdfst[CDF_STATUSTEXT_LEN + 1];
 
   varnum = CDFgetVarNum(id, vn);
-
   if (varnum >= CDF_OK) {
-    recnum = 0L;
-    indices[0] = 0L;
-    cdfs = CDFvarGet(id, varnum, recnum, indices, &value);
-    if (cdfs == CDF_OK) {
-    } else {
-      CDFerror(cdfs, cdfst);
-      fprintf(
-        stderr,
-        "CDF variable get for %s failed: %s (%d)\n",
-        vn,
-        cdfst,
-        cdfs);
+    attrnum = CDFgetAttrNum(id, PARSE_CDF_FIELD_NAME);
+    if (attrnum >= CDF_OK) {
+      cdfs = CDFinquireAttrzEntry(
+        id,
+        attrnum,
+        varnum,
+        &datatype,
+        &numelements);
+      if (cdfs == CDF_OK) {
+
+      }
     }
   }
 

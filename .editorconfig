@@ -27,3 +27,10 @@ insert_final_newline = true
 cpp_new_line_before_catch = false
 cpp_new_line_before_else = false
 cpp_indent_namespace_contents = false
+
+[*.java]
+charset = utf-8
+indent_style = space
+indent_size = 2
+end_of_line = lf
+insert_final_newline = true
