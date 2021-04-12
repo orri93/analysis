@@ -1,28 +1,29 @@
 package gos.analysis.org;
 
-import java.net.MalformedURLException;
-import java.net.URL;
-
+import gov.nasa.gsfc.spdf.cdfj.CDFException;
 import gov.nasa.gsfc.spdf.cdfj.CDFReader;
 import gov.nasa.gsfc.spdf.cdfj.ReaderFactory;
-import gov.nasa.gsfc.spdf.cdfj.CDFException.ReaderError;
 import gov.nasa.gsfc.spdf.cdfj.TimeSeries;
+
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 
 /**
  * Hello world!
  */
 public final class App {
+  static final String SolarOrbiterTrajectoryOutputFile = "solo_helio1day_position_20200211_v01.csv";
   static final String CdfUrl = "https://spdf.gsfc.nasa.gov/pub/data/solar-orbiter/helio1day/solo_helio1day_position_20200211_v01.cdf";
   static final String RadAu = "RAD_AU";
   static final String SeLat = "SE_LAT";
   static final String SeLon = "SE_LON";
 
-  /**
-   * Says hello to the world.
-   * @param args The arguments of the program.
-   */
-  public static void main(String[] args) {
-    try {
+  public static void ProcessSolarOrbiterTrajectory() {
+    try (BufferedWriter writer = Files.newBufferedWriter(Paths.get(SolarOrbiterTrajectoryOutputFile))) {
       URL url = new URL(CdfUrl);
       CDFReader reader = ReaderFactory.getReader(url);
       TimeSeries radauts = null;
@@ -56,6 +57,7 @@ public final class App {
       }
 
       if (radauts != null && selatts != null && selonts != null) {
+        writer.write("time,rad,lat,lon");
         for (int i = 0; i < length; i++) {
           double rut = radaut[i];
           double slat = selatt[i];
@@ -64,21 +66,31 @@ public final class App {
           double slav = selatv[i];
           double slov = selonv[i];
           if (Math.min(rut, Math.min(slat, slot)) == Math.max(rut, Math.max(slat, slot))) {
-            System.out.println(
-              Double.toString(rut) + "," +
-              Double.toString(ruv) + "," +
-              Double.toString(slav) + "," +
-              Double.toString(slov));
+            writer.newLine();
+            writer.write(Double.toString(rut));
+            writer.write(',');
+            writer.write(Double.toString(ruv));
+            writer.write(',');
+            writer.write(Double.toString(slav));
+            writer.write(',');
+            writer.write(Double.toString(slov));
           } else {
             System.err.println("Time mismatch");
           }
         }
       }
-
+      writer.flush();
+      writer.close();
     } catch (MalformedURLException ex) {
       System.err.println("Generating URL from '" + CdfUrl + "' failed: " + ex.getMessage());
-    } catch (ReaderError ex) {
+    } catch (CDFException.ReaderError ex) {
       System.err.println("CDF Reader for '" + CdfUrl + "' failed: " + ex.getMessage());
+    } catch (IOException ex) {
+      System.err.println("IO for '" + SolarOrbiterTrajectoryOutputFile + "' failed: " + ex.getMessage());
     }
+  }
+
+  public static void main(String[] args) {
+    ProcessSolarOrbiterTrajectory();
   }
 }

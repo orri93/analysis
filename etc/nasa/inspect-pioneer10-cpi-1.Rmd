@@ -1,0 +1,149 @@
+---
+title: "Investigating NASA Pioneer 10 Charged Particle Instrument"
+author: "Geirmundur Orri Sigurdsson"
+date: "4/10/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Dependencies
+
+```{r dependencies, message=FALSE, warning=FALSE}
+library(psych)      # For describe
+library(lubridate)
+library(data.table) # For fread
+library(tidyverse)
+library(foreach)
+```
+
+# Functions
+
+## Function for aggregation
+
+```{r function for aggregation}
+aggnrmean <- function(df, n = 5, FUN = mean) {
+  aggregate(df,
+            by = list(gl(ceiling(nrow(df)/n), n)[1:nrow(df)]),
+            FUN = FUN)[-1]
+}
+```
+
+# Download Data
+
+## Downloading all 1 hour CPI data and combine into one
+
+```{r download and combine cpi, echo=TRUE, message=FALSE, warning=FALSE, results='hide'}
+path <- 'https://spdf.gsfc.nasa.gov/pub/data/pioneer/pioneer10/particle/cpi/ip_1hour_ascii/p10cp_hr'
+yseq <- seq(1972, 1992)
+rcpi <- data.frame()      # Empty data frame for result
+foreach(y = yseq) %do% {
+  url <- paste(path, as.character(y), '.asc', sep = '')
+  ycpi <- fread(url)
+  rcpi <- rbind(rcpi, ycpi)
+}
+```
+
+# Convert date time
+
+```{r convert time}
+cpi <- rcpi %>% mutate(ts = date_decimal(V1) + days(V2) + hours(V3))
+```
+
+# Select and rename
+
+```{r select and rename}
+cpi <- cpi %>% select(
+  ts,
+  RID2P   = V4,   # ID-2 rate for 11-20 MeV protons [cps]
+  RID2HE  = V5,   # ID-2 rate for 11-20 MeV/nucleon helium [cps]
+  RID3P   = V6,   # ID-3 rate for 20-24 MeV protons [cps]
+  RID3HE  = V7,   # ID-3 rate for 20-24 MeV/nucleon helium [cps]
+  RID4P   = V8,   # ID-4 rate for 24-29 MeV protons [cps]
+  RID4HE  = V9,   # ID-4 rate for 24-29 MeV/nucleon helium [cps]
+  RID5P   = V10,  # ID-5 rate for 29-67 MeV protons [cps]
+  RID5HE  = V11,  # ID-5 rate for 29-67 MeV/nucleon helium [cps]
+  RID5E1  = V12,  # ID-5 rate for 7-17 MeV electrons [cps]
+  RID5E2  = V13,  # ID-5 rate for 2 x minimum-ionizing [cps]
+  RID7    = V14,  # ID-7 + ID-13 integral rate for ions at E > 67 MeV/nucleon [cps]
+  RID7ZG5 = V15)  # ID-7 integral rate for Z > 5 ions at E > 67 MeV/nucleon [cps]
+```
+
+# Replace fill in value with NA
+
+```{r replace fill with na}
+cpi <- na_if(cpi, 1e31)
+```
+
+# Time range
+
+```{r time range}
+summary(cpi$ts)
+```
+
+# Describe data
+
+```{r describe}
+describe(cpi[,-1], skew = FALSE)
+```
+
+# Aggregate by Mean
+
+```{r aggregate by mean}
+mcpi <- aggnrmean(cpi, 10)
+```
+
+## Describe aggregated data
+
+```{r aggregated}
+describe(mcpi[,-1], skew = FALSE)
+```
+
+# Plots
+
+## Protons
+
+```{r plots protons, warning=FALSE}
+pcpi <- reshape2::melt(mcpi %>% select(time = ts, "11-20 MeV" = RID2P, "20-24 MeV" = RID3P, "24-29 MeV" = RID4P, "29-67 MeV" = RID5P), id = "time") %>% filter(!is.na(value))
+ggplot(data = pcpi) +
+# geom_line(aes(x = time, y = value, color = variable)) +
+  geom_point(aes(x = time, y = value, color = variable)) +
+  scale_y_continuous(trans = 'log10') +
+  labs(title = "Pioneer 10 CPI Protons", x = "Time", y = "Rate (cps)")
+```
+
+## Nucleon helium
+
+```{r plots he, warning=FALSE}
+pcpi <- reshape2::melt(mcpi %>% select(time = ts, "11-20 MeV" = RID2HE, "20-24 MeV" = RID3HE, "24-29 MeV" = RID4HE, "29-67 MeV" = RID5HE), id = "time") %>% filter(!is.na(value))
+ggplot(data = pcpi) +
+# geom_line(aes(x = time, y = value, color = variable)) +
+  geom_point(aes(x = time, y = value, color = variable)) +
+  scale_y_continuous(trans = 'log10') +
+  labs(title = "Pioneer 10 CPI nucleon He", x = "Time", y = "Rate (cps)")
+```
+
+## Electrons and minimum-ionizing rate
+
+```{r plots electrons and minimum ionizing, warning=FALSE}
+pcpi <- reshape2::melt(mcpi %>% select(time = ts, "7-17 MeV Electrons" = RID5E1, "Double minimum-ionizing" = RID5E2), id = "time") %>% filter(!is.na(value))
+ggplot(data = pcpi) +
+# geom_line(aes(x = time, y = value, color = variable)) +
+  geom_point(aes(x = time, y = value, color = variable)) +
+  scale_y_continuous(trans = 'log10') +
+  labs(title = "Pioneer 10 CPI Electrons and minimum ionizing", x = "Time", y = "Rate (cps)")
+```
+
+## Integral rate
+
+```{r plots integral, warning=FALSE}
+pcpi <- reshape2::melt(mcpi %>% select(time = ts, "Integral rate" = RID7, "Integral rate Z > 5" = RID7ZG5), id = "time") %>% filter(!is.na(value))
+ggplot(data = pcpi) +
+# geom_line(aes(x = time, y = value, color = variable)) +
+  geom_point(aes(x = time, y = value, color = variable)) +
+  scale_y_continuous(trans = 'log10') +
+  labs(title = "Pioneer 10 CPI ions at E > 67 MeV/nucleon", x = "Time", y = "Rate (cps)")
+```
+
