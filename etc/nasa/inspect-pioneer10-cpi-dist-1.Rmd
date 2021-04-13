@@ -16,8 +16,10 @@ knitr::opts_chunk$set(echo = TRUE)
 library(psych)      # For describe
 library(lubridate)
 library(data.table) # For fread
+library(sphereplot)
 library(tidyverse)
 library(foreach)
+library(plotly)
 ```
 
 # Functions
@@ -133,6 +135,16 @@ traj <- traj %>% filter(ts >= mints & ts <= maxts)
 describe(cpi[,-1], skew = FALSE)
 ```
 
+# Calculate averages
+
+```{r calculate averages}
+cpi <- cpi %>% mutate(
+  RIDMP = (RID2P + RID3P + RID4P + RID5P) / 4,
+  RIDMHE = (RID2HE + RID3HE + RID4HE + RID5HE) / 4,
+  RIDME = (RID5E1 + RID5E2) / 2,
+  RIDM7 = (RID7 + RID7ZG5) / 2)
+```
+
 # Aggregate by Mean
 
 ```{r aggregate by mean}
@@ -143,6 +155,13 @@ mcpi <- aggnrmean(cpi, 10)
 
 ```{r aggregated}
 describe(mcpi[,-1], skew = FALSE)
+```
+
+# Transforms 3D spherical coordinates to Cartesian coordinates
+
+```{r transforms and combine}
+hcart <- sph2car(traj$SECLON, traj$SECLAT, traj$HRANGP)
+traj <- traj %>% mutate(x = hcart[,1], y = hcart[,2], z = hcart[,3])
 ```
 
 # Convert to data tables
@@ -169,9 +188,9 @@ cpitraj <- traj[mcpi, roll = "nearest"]
 ```{r plots distance, warning=FALSE}
 ggplot(data = traj) +
   geom_point(aes(x = ts, y = HRANGP)) +
-  labs(title = "Pioneer 10 Trajectory", x = "Time", y = "Distance from Sun (AU)")
+  labs(title = "Pioneer 10 Trajectory", x = "Time", y = "Distance from Sun (AU)") +
+  theme_light()
 ```
-
 
 ## Protons
 
@@ -181,13 +200,15 @@ ggplot(data = pcpi) +
 # geom_line(aes(x = time, y = value, color = variable)) +
   geom_point(aes(x = time, y = value, color = variable)) +
   scale_y_continuous(trans = 'log10') +
-  labs(title = "Pioneer 10 CPI Protons", x = "Time", y = "Rate (cps)")
+  labs(title = "Pioneer 10 CPI Protons", x = "Time", y = "Rate (cps)") +
+  theme_light()
 pcpi <- reshape2::melt(cpitraj %>% select(distance = HRANGP, "11-20 MeV" = RID2P, "20-24 MeV" = RID3P, "24-29 MeV" = RID4P, "29-67 MeV" = RID5P), id = "distance") %>% filter(!is.na(value))
 ggplot(data = pcpi) +
 # geom_line(aes(x = distance, y = value, color = variable)) +
   geom_point(aes(x = distance, y = value, color = variable)) +
   scale_y_continuous(trans = 'log10') +
-  labs(title = "Pioneer 10 CPI Protons", x = "Distance from Sun (AU)", y = "Rate (cps)")
+  labs(title = "Pioneer 10 CPI Protons", x = "Distance from Sun (AU)", y = "Rate (cps)") +
+  theme_light()
 ```
 
 ## Nucleon helium
@@ -198,13 +219,15 @@ ggplot(data = pcpi) +
 # geom_line(aes(x = time, y = value, color = variable)) +
   geom_point(aes(x = time, y = value, color = variable)) +
   scale_y_continuous(trans = 'log10') +
-  labs(title = "Pioneer 10 CPI nucleon He", x = "Time", y = "Rate (cps)")
+  labs(title = "Pioneer 10 CPI nucleon He", x = "Time", y = "Rate (cps)") +
+  theme_light()
 pcpi <- reshape2::melt(cpitraj %>% select(distance = HRANGP, "11-20 MeV" = RID2HE, "20-24 MeV" = RID3HE, "24-29 MeV" = RID4HE, "29-67 MeV" = RID5HE), id = "distance") %>% filter(!is.na(value))
 ggplot(data = pcpi) +
 # geom_line(aes(x = distance, y = value, color = variable)) +
   geom_point(aes(x = distance, y = value, color = variable)) +
   scale_y_continuous(trans = 'log10') +
-  labs(title = "Pioneer 10 CPI nucleon He", x = "Distance from Sun (AU)", y = "Rate (cps)")
+  labs(title = "Pioneer 10 CPI nucleon He", x = "Distance from Sun (AU)", y = "Rate (cps)") +
+  theme_light()
 ```
 
 ## Electrons and minimum-ionizing rate
@@ -215,13 +238,15 @@ ggplot(data = pcpi) +
 # geom_line(aes(x = time, y = value, color = variable)) +
   geom_point(aes(x = time, y = value, color = variable)) +
   scale_y_continuous(trans = 'log10') +
-  labs(title = "Pioneer 10 CPI Electrons and minimum ionizing", x = "Time", y = "Rate (cps)")
+  labs(title = "Pioneer 10 CPI Electrons and minimum ionizing", x = "Time", y = "Rate (cps)") +
+  theme_light()
 pcpi <- reshape2::melt(cpitraj %>% select(distance = HRANGP, "7-17 MeV Electrons" = RID5E1, "Double minimum-ionizing" = RID5E2), id = "distance") %>% filter(!is.na(value))
 ggplot(data = pcpi) +
 # geom_line(aes(x = distance, y = value, color = variable)) +
   geom_point(aes(x = distance, y = value, color = variable)) +
   scale_y_continuous(trans = 'log10') +
-  labs(title = "Pioneer 10 CPI Electrons and minimum ionizing", x = "Distance from Sun (AU)", y = "Rate (cps)")
+  labs(title = "Pioneer 10 CPI Electrons and minimum ionizing", x = "Distance from Sun (AU)", y = "Rate (cps)") +
+  theme_light()
 ```
 
 ## Integral rate
@@ -232,11 +257,63 @@ ggplot(data = pcpi) +
 # geom_line(aes(x = time, y = value, color = variable)) +
   geom_point(aes(x = time, y = value, color = variable)) +
   scale_y_continuous(trans = 'log10') +
-  labs(title = "Pioneer 10 CPI ions at E > 67 MeV/nucleon", x = "Time", y = "Rate (cps)")
+  labs(title = "Pioneer 10 CPI ions at E > 67 MeV/nucleon", x = "Time", y = "Rate (cps)") +
+  theme_light()
 pcpi <- reshape2::melt(cpitraj %>% select(distance = HRANGP, "Integral rate" = RID7, "Integral rate Z > 5" = RID7ZG5), id = "distance") %>% filter(!is.na(value))
 ggplot(data = pcpi) +
 # geom_line(aes(x = distance, y = value, color = variable)) +
   geom_point(aes(x = distance, y = value, color = variable)) +
   scale_y_continuous(trans = 'log10') +
-  labs(title = "Pioneer 10 CPI ions at E > 67 MeV/nucleon", x = "Distance from Sun (AU)", y = "Rate (cps)")
+  labs(title = "Pioneer 10 CPI ions at E > 67 MeV/nucleon", x = "Distance from Sun (AU)", y = "Rate (cps)") +
+  theme_light()
+```
+
+## 3D Scatter
+
+### Average protons rate in Trajectory
+
+```{r figure 3d protons}
+p3d <- cpitraj%>% select(x, y, z, Rate = RIDMP)
+plot_ly(p3d, x = ~x, y = ~y, z = ~z, color = ~Rate) %>%
+  add_markers() %>%
+  layout(scene = list(
+    xaxis = list(title = 'AU'),
+    yaxis = list(title = 'AU'),
+    zaxis = list(title = 'AU')))
+```
+
+### Average rate of nucleon helium in Trajectory
+
+```{r figure 3d nucleon helium}
+p3d <- cpitraj%>% select(x, y, z, Rate = RIDMHE)
+plot_ly(p3d, x = ~x, y = ~y, z = ~z, color = ~Rate) %>%
+  add_markers() %>%
+  layout(scene = list(
+    xaxis = list(title = 'AU'),
+    yaxis = list(title = 'AU'),
+    zaxis = list(title = 'AU')))
+```
+
+### Average rate of electrons and ionizing in Trajectory
+
+```{r figure 3d electrons and ionizing}
+p3d <- cpitraj%>% select(x, y, z, Rate = RIDME)
+plot_ly(p3d, x = ~x, y = ~y, z = ~z, color = ~Rate) %>%
+  add_markers() %>%
+  layout(scene = list(
+    xaxis = list(title = 'AU'),
+    yaxis = list(title = 'AU'),
+    zaxis = list(title = 'AU')))
+```
+
+### Average integral rate in Trajectory
+
+```{r figure 3d integral}
+p3d <- cpitraj%>% select(x, y, z, Rate = RIDM7)
+plot_ly(p3d, x = ~x, y = ~y, z = ~z, color = ~Rate) %>%
+  add_markers() %>%
+  layout(scene = list(
+    xaxis = list(title = 'AU'),
+    yaxis = list(title = 'AU'),
+    zaxis = list(title = 'AU')))
 ```

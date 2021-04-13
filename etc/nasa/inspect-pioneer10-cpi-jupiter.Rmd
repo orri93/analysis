@@ -1,0 +1,336 @@
+---
+title: Investigating NASA Pioneer 10 Charged Particle Instrument with distance from
+  Jupiter
+author: "Geirmundur Orri Sigurdsson"
+date: "4/13/2021"
+output: html_document
+---
+
+[The R Markdown code is available on GitHub]()
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Dependencies
+
+```{r dependencies, message=FALSE, warning=FALSE}
+library(psych)      # For describe
+library(lubridate)
+library(data.table) # For fread
+library(sphereplot)
+library(tidyverse)
+library(foreach)
+library(plotly)
+```
+
+# Download Data
+
+## Downloading all 1 hour CPI data and combine into one
+
+```{r download and combine cpi, echo=TRUE, message=FALSE, warning=FALSE, results='hide'}
+path <- 'https://spdf.gsfc.nasa.gov/pub/data/pioneer/pioneer10/particle/cpi/ip_1hour_ascii/p10cp_hr'
+yseq <- seq(1972, 1992)
+rcpi <- data.frame()      # Empty data frame for result
+foreach(y = yseq) %do% {
+  url <- paste(path, as.character(y), '.asc', sep = '')
+  ycpi <- fread(url)
+  rcpi <- rbind(rcpi, ycpi)
+}
+```
+
+
+## Download Jupiter Trajectory
+
+```{r download mission trajectory, echo=TRUE, message=FALSE, warning=FALSE, results='hide'}
+jtraj <- fread("https://spdf.gsfc.nasa.gov/pub/data/pioneer/pioneer10/traj/jupiter/p10trjjup.asc")
+```
+
+# Convert date time
+
+```{r convert time}
+cpi <- rcpi %>% mutate(ts = date_decimal(V1) + days(V2) + hours(V3))
+traj <- jtraj %>% mutate(ts = date_decimal(V1) + as.duration(86400 * V2))
+```
+
+# Select and rename
+
+```{r select and rename}
+cpi <- cpi %>% select(
+  ts,
+  RID2P   = V4,   # ID-2 rate for 11-20 MeV protons [cps]
+  RID2HE  = V5,   # ID-2 rate for 11-20 MeV/nucleon helium [cps]
+  RID3P   = V6,   # ID-3 rate for 20-24 MeV protons [cps]
+  RID3HE  = V7,   # ID-3 rate for 20-24 MeV/nucleon helium [cps]
+  RID4P   = V8,   # ID-4 rate for 24-29 MeV protons [cps]
+  RID4HE  = V9,   # ID-4 rate for 24-29 MeV/nucleon helium [cps]
+  RID5P   = V10,  # ID-5 rate for 29-67 MeV protons [cps]
+  RID5HE  = V11,  # ID-5 rate for 29-67 MeV/nucleon helium [cps]
+  RID5E1  = V12,  # ID-5 rate for 7-17 MeV electrons [cps]
+  RID5E2  = V13,  # ID-5 rate for 2 x minimum-ionizing [cps]
+  RID7    = V14,  # ID-7 + ID-13 integral rate for ions at E > 67 MeV/nucleon [cps]
+  RID7ZG5 = V15)  # ID-7 integral rate for Z > 5 ions at E > 67 MeV/nucleon [cps]
+traj <- traj %>% select(
+  ts,
+  SRANGE = V3,  # Sun-spacecraft distance in km
+  SECLAT = V4,  # Solar ecliptic latitude and 
+  SECLON = V5,  # longitude (true equinox and ecliptic of date) in degrees
+  PRANGE = V6,  # Planet-spacecraft distance in km
+  PEQLAT = V7,  # Planetocentric, planet-fixed latitude and
+  PEQLON = V8)  # longitude (System III for Jupiter) in degrees
+```
+
+# Replace fill in value with NA
+
+```{r replace fill with na}
+cpi <- na_if(cpi, 1e31)
+```
+
+# Time range
+
+## CPI data range
+
+```{r time range cpi}
+summary(cpi$ts)
+```
+
+## Trajectory data range
+
+```{r time range trajectory}
+summary(traj$ts)
+```
+
+## Determine Date Range
+
+```{r determine date range}
+cpimints <- min(cpi$ts)
+cpimaxts <- max(cpi$ts)
+trajmints <- min(traj$ts)
+trajmaxts <- max(traj$ts)
+mints <- max(cpimints, trajmints)
+maxts <- min(cpimaxts, trajmaxts)
+```
+
+# Filter all data by date range
+
+```{r filter by date range}
+cpi <- cpi %>% filter(ts >= mints & ts <= maxts)
+traj <- traj %>% filter(ts >= mints & ts <= maxts)
+```
+
+# Describe data
+
+```{r describe}
+describe(cpi[,-1], skew = FALSE)
+```
+
+# Calculate averages
+
+```{r calculate averages}
+cpi <- cpi %>% mutate(
+  RIDMP = (RID2P + RID3P + RID4P + RID5P) / 4,
+  RIDMHE = (RID2HE + RID3HE + RID4HE + RID5HE) / 4,
+  RIDME = (RID5E1 + RID5E2) / 2,
+  RIDM7 = (RID7 + RID7ZG5) / 2)
+```
+
+# Transforms 3D spherical coordinates to Cartesian coordinates
+
+```{r transforms and combine}
+scart <- sph2car(traj$SECLON, traj$SECLAT, traj$SRANGE)
+pcart <- sph2car(traj$PEQLON, traj$PEQLAT, traj$PRANGE)
+traj <- traj %>% mutate(
+  sx = scart[,1], sy = scart[,2], sz = scart[,3],
+  px = pcart[,1], py = pcart[,2], pz = pcart[,3])
+```
+
+# Convert to data tables
+
+```{r convert to data tables}
+setDT(cpi)
+setDT(traj)
+```
+
+# Combine data
+
+## Combine CPI and Trajectory data into one set
+
+```{r combine v1 and v2 trajectory}
+setkey(cpi, ts)
+setkey(traj, ts)
+cpitraj <- traj[cpi, roll = "nearest"]
+```
+
+# Plots
+
+## Distance from sun
+
+```{r plots distance sun, warning=FALSE}
+ggplot(data = traj) +
+  geom_point(aes(x = ts, y = SRANGE)) +
+  labs(title = "Pioneer 10 Trajectory 1973", x = "Time", y = "Distance from Sun (km)") +
+  theme_light()
+```
+
+## Distance from planet
+
+```{r plots distance planet, warning=FALSE}
+ggplot(data = traj) +
+  geom_point(aes(x = ts, y = PRANGE)) +
+  labs(title = "Pioneer 10 Trajectory 1973", x = "Time", y = "Distance from Jupiter (km)") +
+  theme_light()
+```
+
+## Protons
+
+```{r plots protons, warning=FALSE}
+pcpi <- reshape2::melt(cpi %>% select(time = ts, "11-20 MeV" = RID2P, "20-24 MeV" = RID3P, "24-29 MeV" = RID4P, "29-67 MeV" = RID5P), id = "time") %>% filter(!is.na(value))
+ggplot(data = pcpi) +
+# geom_line(aes(x = time, y = value, color = variable)) +
+  geom_point(aes(x = time, y = value, color = variable)) +
+  scale_y_continuous(trans = 'log10') +
+  labs(title = "Pioneer 10 CPI Protons 1973", x = "Time", y = "Rate (cps)") +
+  theme_light()
+pcpi <- reshape2::melt(cpitraj %>% select(distance = SRANGE, "11-20 MeV" = RID2P, "20-24 MeV" = RID3P, "24-29 MeV" = RID4P, "29-67 MeV" = RID5P), id = "distance") %>% filter(!is.na(value))
+ggplot(data = pcpi) +
+# geom_line(aes(x = distance, y = value, color = variable)) +
+  geom_point(aes(x = distance, y = value, color = variable)) +
+  scale_y_continuous(trans = 'log10') +
+  labs(title = "Pioneer 10 CPI Protons", x = "Distance from Sun (km)", y = "Rate (cps)") +
+  theme_light()
+pcpi <- reshape2::melt(cpitraj %>% select(distance = PRANGE, "11-20 MeV" = RID2P, "20-24 MeV" = RID3P, "24-29 MeV" = RID4P, "29-67 MeV" = RID5P), id = "distance") %>% filter(!is.na(value))
+ggplot(data = pcpi) +
+# geom_line(aes(x = distance, y = value, color = variable)) +
+  geom_point(aes(x = distance, y = value, color = variable)) +
+  scale_y_continuous(trans = 'log10') +
+  labs(title = "Pioneer 10 CPI Protons", x = "Distance from Jupiter (km)", y = "Rate (cps)") +
+  theme_light()
+```
+
+## Nucleon helium
+
+```{r plots he, warning=FALSE}
+pcpi <- reshape2::melt(cpi %>% select(time = ts, "11-20 MeV" = RID2HE, "20-24 MeV" = RID3HE, "24-29 MeV" = RID4HE, "29-67 MeV" = RID5HE), id = "time") %>% filter(!is.na(value))
+ggplot(data = pcpi) +
+# geom_line(aes(x = time, y = value, color = variable)) +
+  geom_point(aes(x = time, y = value, color = variable)) +
+  scale_y_continuous(trans = 'log10') +
+  labs(title = "Pioneer 10 CPI nucleon He 1973", x = "Time", y = "Rate (cps)") +
+  theme_light()
+pcpi <- reshape2::melt(cpitraj %>% select(distance = SRANGE, "11-20 MeV" = RID2HE, "20-24 MeV" = RID3HE, "24-29 MeV" = RID4HE, "29-67 MeV" = RID5HE), id = "distance") %>% filter(!is.na(value))
+ggplot(data = pcpi) +
+# geom_line(aes(x = distance, y = value, color = variable)) +
+  geom_point(aes(x = distance, y = value, color = variable)) +
+  scale_y_continuous(trans = 'log10') +
+  labs(title = "Pioneer 10 CPI nucleon He", x = "Distance from Sun (km)", y = "Rate (cps)") +
+  theme_light()
+pcpi <- reshape2::melt(cpitraj %>% select(distance = PRANGE, "11-20 MeV" = RID2HE, "20-24 MeV" = RID3HE, "24-29 MeV" = RID4HE, "29-67 MeV" = RID5HE), id = "distance") %>% filter(!is.na(value))
+ggplot(data = pcpi) +
+# geom_line(aes(x = distance, y = value, color = variable)) +
+  geom_point(aes(x = distance, y = value, color = variable)) +
+  scale_y_continuous(trans = 'log10') +
+  labs(title = "Pioneer 10 CPI nucleon He", x = "Distance from Jupiter (km)", y = "Rate (cps)") +
+  theme_light()
+```
+
+## Electrons and minimum-ionizing rate
+
+```{r plots electrons and minimum ionizing, warning=FALSE}
+pcpi <- reshape2::melt(cpi %>% select(time = ts, "7-17 MeV Electrons" = RID5E1, "Double minimum-ionizing" = RID5E2), id = "time") %>% filter(!is.na(value))
+ggplot(data = pcpi) +
+# geom_line(aes(x = time, y = value, color = variable)) +
+  geom_point(aes(x = time, y = value, color = variable)) +
+  scale_y_continuous(trans = 'log10') +
+  labs(title = "Pioneer 10 CPI Electrons and minimum ionizing", x = "Time", y = "Rate (cps)") +
+  theme_light()
+pcpi <- reshape2::melt(cpitraj %>% select(distance = SRANGE, "7-17 MeV Electrons" = RID5E1, "Double minimum-ionizing" = RID5E2), id = "distance") %>% filter(!is.na(value))
+ggplot(data = pcpi) +
+# geom_line(aes(x = distance, y = value, color = variable)) +
+  geom_point(aes(x = distance, y = value, color = variable)) +
+  scale_y_continuous(trans = 'log10') +
+  labs(title = "Pioneer 10 CPI Electrons and minimum ionizing", x = "Distance from Sun (km)", y = "Rate (cps)") +
+  theme_light()
+pcpi <- reshape2::melt(cpitraj %>% select(distance = PRANGE, "7-17 MeV Electrons" = RID5E1, "Double minimum-ionizing" = RID5E2), id = "distance") %>% filter(!is.na(value))
+ggplot(data = pcpi) +
+# geom_line(aes(x = distance, y = value, color = variable)) +
+  geom_point(aes(x = distance, y = value, color = variable)) +
+  scale_y_continuous(trans = 'log10') +
+  labs(title = "Pioneer 10 CPI Electrons and minimum ionizing", x = "Distance from Jupiter (km)", y = "Rate (cps)") +
+  theme_light()
+```
+
+## Integral rate
+
+```{r plots integral, warning=FALSE}
+pcpi <- reshape2::melt(cpi %>% select(time = ts, "Integral rate" = RID7, "Integral rate Z > 5" = RID7ZG5), id = "time") %>% filter(!is.na(value))
+ggplot(data = pcpi) +
+# geom_line(aes(x = time, y = value, color = variable)) +
+  geom_point(aes(x = time, y = value, color = variable)) +
+  scale_y_continuous(trans = 'log10') +
+  labs(title = "Pioneer 10 CPI ions at E > 67 MeV/nucleon", x = "Time", y = "Rate (cps)") +
+  theme_light()
+pcpi <- reshape2::melt(cpitraj %>% select(distance = SRANGE, "Integral rate" = RID7, "Integral rate Z > 5" = RID7ZG5), id = "distance") %>% filter(!is.na(value))
+ggplot(data = pcpi) +
+# geom_line(aes(x = distance, y = value, color = variable)) +
+  geom_point(aes(x = distance, y = value, color = variable)) +
+  scale_y_continuous(trans = 'log10') +
+  labs(title = "Pioneer 10 CPI ions at E > 67 MeV/nucleon", x = "Distance from Sun (km)", y = "Rate (cps)") +
+  theme_light()
+pcpi <- reshape2::melt(cpitraj %>% select(distance = PRANGE, "Integral rate" = RID7, "Integral rate Z > 5" = RID7ZG5), id = "distance") %>% filter(!is.na(value))
+ggplot(data = pcpi) +
+# geom_line(aes(x = distance, y = value, color = variable)) +
+  geom_point(aes(x = distance, y = value, color = variable)) +
+  scale_y_continuous(trans = 'log10') +
+  labs(title = "Pioneer 10 CPI ions at E > 67 MeV/nucleon", x = "Distance from Jupiter (km)", y = "Rate (cps)") +
+  theme_light()
+```
+
+## 3D Scatter
+
+### Average protons rate in Trajectory
+
+```{r figure 3d protons}
+p3d <- cpitraj%>% select(px, py, pz, Rate = RIDMP)
+plot_ly(p3d, x = ~px, y = ~py, z = ~pz, color = ~Rate) %>%
+  add_markers() %>%
+  layout(scene = list(
+    xaxis = list(title = 'km'),
+    yaxis = list(title = 'km'),
+    zaxis = list(title = 'km')))
+```
+
+### Average rate of nucleon helium in Trajectory
+
+```{r figure 3d nucleon helium}
+p3d <- cpitraj%>% select(px, py, pz, Rate = RIDMHE)
+plot_ly(p3d, x = ~px, y = ~py, z = ~pz, color = ~Rate) %>%
+  add_markers() %>%
+  layout(scene = list(
+    xaxis = list(title = 'km'),
+    yaxis = list(title = 'km'),
+    zaxis = list(title = 'km')))
+```
+
+### Average rate of electrons and ionizing in Trajectory
+
+```{r figure 3d electrons and ionizing}
+p3d <- cpitraj%>% select(px, py, pz, Rate = RIDME)
+plot_ly(p3d, x = ~px, y = ~py, z = ~pz, color = ~Rate) %>%
+  add_markers() %>%
+  layout(scene = list(
+    xaxis = list(title = 'km'),
+    yaxis = list(title = 'km'),
+    zaxis = list(title = 'km')))
+```
+
+### Average integral rate in Trajectory
+
+```{r figure 3d integral}
+p3d <- cpitraj%>% select(px, py, pz, Rate = RIDM7)
+plot_ly(p3d, x = ~px, y = ~py, z = ~pz, color = ~Rate) %>%
+  add_markers() %>%
+  layout(scene = list(
+    xaxis = list(title = 'km'),
+    yaxis = list(title = 'km'),
+    zaxis = list(title = 'km')))
+```
