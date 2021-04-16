@@ -1,3 +1,7 @@
+*.txt
+*.map
 *.pdf
 *.png
 *.csv
+*.css
+*.js

@@ -6,13 +6,13 @@ date: "4/13/2021"
 output: html_document
 ---
 
-[The R Markdown code is available on GitHub](https://github.com/orri93/analysis/blob/master/etc/nasa/inspect-pioneer10-cpi-jupiter.Rmd)
-
-[Investigating for the complete Pioneer 10 CPI mission](https://orri.blob.core.windows.net/reports/inspect-pioneer10-cpi-dist-1.html)
-
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
+
+[The R Markdown code is available on GitHub](https://github.com/orri93/analysis/blob/master/etc/astronomy/nasa/inspect-pioneer10-cpi-jupiter.Rmd)
+
+[Investigating for the complete Pioneer 10 CPI mission](https://orri.blob.core.windows.net/reports/inspect-pioneer10-cpi-dist-1.html)
 
 # Dependencies
 

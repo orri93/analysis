@@ -1,0 +1,75 @@
+---
+title: "Investigating NASA New Horizons SWAP Histogram"
+author: "Geirmundur Orri Sigurdsson"
+date: "4/16/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+[The R Markdown code is available on GitHub](https://github.com/orri93/analysis/blob/master/etc/astronomy/nasa/inspect-pioneer10-cpi-jupiter.Rmd)
+
+# Dependencies
+
+```{r dependencies, message=FALSE, warning=FALSE}
+library(lubridate)
+library(tidyverse)
+library(hrbrthemes)
+library(viridis)
+library(plotly)
+```
+
+# Read Data
+
+```{r read data}
+rnhhist <- read.csv('../../../tmp/nasa/spdf/new-horizons/swap/ions-histogram/new_horizons_swap_pickup-ions-histogram_20081031180800_v1.0.1.csv')
+```
+
+# Convert date time
+
+```{r convert time}
+nhhist <- rnhhist %>% mutate(ts = as_datetime(time / 1000))
+```
+
+# Range
+
+# Time range
+
+```{r time range}
+summary(nhhist$ts)
+```
+
+# Distance range
+
+```{r distance range}
+summary(nhhist$distance)
+```
+
+# Plots
+
+## Distance from sun
+
+```{r plots distance sun, warning=FALSE}
+ggplot(data = nhhist) +
+  geom_point(aes(x = ts, y = distance)) +
+  labs(title = "New Horizons SWAP Histogram data", x = "Time", y = "Distance from Sun (AU)") +
+  theme_light()
+```
+
+## Histogram
+
+```{r plot histogram, warning=FALSE}
+pnhhist <- nhhist %>%
+  select(Time = ts, paste0('hist', seq(1,64))) %>%
+  gather(key = 'Y', value = 'Z', -1) %>%
+  mutate(Y = as.numeric(gsub('hist', '', Y)))
+ggplot(data = pnhhist) + 
+  geom_tile(aes(Time, Y, fill = Z)) +
+  labs(title = "New Horizons SWAP Histogram", x = "Time", y = "eV/q") +
+  scale_fill_viridis(discrete=FALSE) +
+  theme_ipsum()
+# ggplotly(gp)
+```
+
