@@ -1,0 +1,185 @@
+---
+title: "Investigating NASA New Horizons SWAP valid sum 2008"
+author: "Geirmundur Orri Sigurdsson"
+date: "4/16/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+[The R Markdown code is available on GitHub](https://github.com/orri93/analysis/blob/master/etc/astronomy/nasa/inspect-new-horizons-swap-validsum-2008.Rmd)
+
+# Dependencies
+
+```{r dependencies, message=FALSE, warning=FALSE}
+library(lubridate)
+library(tidyverse)
+library(hrbrthemes)
+library(viridis)
+```
+
+# Functions
+
+## Function for aggregation and formatting linear model
+
+```{r function for aggregation}
+aggregatedf <- function(df, n = 5, FUN = mean) {
+  aggregate(df,
+            by = list(gl(ceiling(nrow(df)/n), n)[1:nrow(df)]),
+            FUN = FUN)[-1]
+}
+```
+
+## Function for formatting linear model
+
+```{r function format model}
+formatmodel <- function(m, eq_digits = 2, r_digits = 3) {
+  eq <- substitute(italic(y) == a + b %.% italic(x)*","~~italic(r)^2~"="~r2, list(
+    a = format(unname(coef(m)[1]), digits = eq_digits),
+    b = format(unname(coef(m)[2]), digits = eq_digits),
+    r2 = format(summary(m)$r.squared, digits = r_digits)))
+  as.character(as.expression(eq));
+}
+```
+
+# Read Data
+
+```{r read data}
+rnhvs <- read.csv('../../../tmp/nasa/spdf/new-horizons/swap/validsum/2008/new_horizons_swap_validsum_20081010210700_v1.0.5.csv')
+```
+
+# Convert date time
+
+```{r convert time}
+nhvs <- rnhvs %>% mutate(ts = as_datetime(time / 1000))
+```
+
+# Range
+
+# Time range
+
+```{r time range}
+summary(nhvs$ts)
+```
+
+# Distance range
+
+```{r distance range}
+summary(nhvs$nhhgidr)
+```
+
+# Aggregate by Mean
+
+```{r aggregate by mean}
+nhvs <- aggregatedf(nhvs, 50)
+```
+
+# Estimate the speed
+
+Compare with 12.26 km/s according to Wikipedia
+
+```{r speed}
+model <- lm(formula = nhhgidr ~ time, data = nhvs)
+coefficients <- coef(model)
+speed <- coefficients[2] # AU/μs
+speed <- speed * 149597870.7 * 1000 # Convert to km/s
+speed
+```
+
+# Plots
+
+## Distance from sun
+
+```{r plots distance sun, message=FALSE, warning=FALSE}
+speedtext <- sprintf("Estimated speed %f km/s", speed)
+modeleq <- formatmodel(model, eq_digits = 3, r_digits = 4)
+ggplot(data = nhvs, mapping = aes(x = ts, y = nhhgidr)) +
+  geom_point() +
+  geom_smooth(method = 'lm') +
+  labs(title = "New Horizons SWAP data", subtitle = speedtext, x = "Time", y = "Distance from Sun (AU)") +
+  geom_text(data = nhvs[25,], label = modeleq, vjust = -5, parse = TRUE) +
+  theme_light()
+```
+
+## Density with Temperature and Speed
+
+```{r plots density, warning=FALSE}
+nhvs %>% select(ts, n, speed = v) %>% 
+  ggplot(mapping = aes(x = ts, y = n, color = speed)) + geom_point() +
+  labs(title = "New Horizons SWAP proton density", x = "Time", y = "cm**-3") +
+  theme_light()
+nhvs %>% select(nhhgidr, n, speed = v) %>%
+  ggplot(mapping = aes(x = nhhgidr, y = n, color = speed)) + geom_point() +
+  labs(title = "New Horizons SWAP proton density", x = "Distance from Sun (AU)", y = "cm**-3") +
+  theme_light()
+nhvs %>% select(ts, n, temperature = t) %>% 
+  ggplot(mapping = aes(x = ts, y = n, color = temperature)) + geom_point() +
+  labs(title = "New Horizons SWAP proton density", x = "Time", y = "cm**-3") +
+  theme_light()
+nhvs %>% select(nhhgidr, n, temperature = t) %>%
+  ggplot(mapping = aes(x = nhhgidr, y = n, color = temperature)) + geom_point() +
+  labs(title = "New Horizons SWAP proton density", x = "Distance from Sun (AU)", y = "cm**-3") +
+  theme_light()
+```
+
+## Speed with Density and Speed
+
+```{r plots speed, warning=FALSE}
+nhvs %>% select(ts, v, density = n) %>% 
+  ggplot(mapping = aes(x = ts, y = v, color = density)) + geom_point() +
+  labs(title = "New Horizons SWAP proton Speed", x = "Time", y = "km/s") +
+  theme_light()
+nhvs %>% select(nhhgidr, v, density = n) %>%
+  ggplot(mapping = aes(x = nhhgidr, y = v, color = density)) + geom_point() +
+  labs(title = "New Horizons SWAP proton Speed", x = "Distance from Sun (AU)", y = "km/s") +
+  theme_light()
+nhvs %>% select(ts, v, temperature = t) %>% 
+  ggplot(mapping = aes(x = ts, y = v, color = temperature)) + geom_point() +
+  labs(title = "New Horizons SWAP proton Speed", x = "Time", y = "km/s") +
+  theme_light()
+nhvs %>% select(nhhgidr, v, temperature = t) %>%
+  ggplot(mapping = aes(x = nhhgidr, y = v, color = temperature)) + geom_point() +
+  labs(title = "New Horizons SWAP proton Speed", x = "Distance from Sun (AU)", y = "km/s") +
+  theme_light()
+```
+
+
+## Temperature with Density and Speed
+
+```{r plots temperature, warning=FALSE}
+nhvs %>% select(ts, t, density = n) %>% 
+  ggplot(mapping = aes(x = ts, y = t, color = density)) + geom_point() +
+  labs(title = "New Horizons SWAP proton Temperature", x = "Time", y = "K") +
+  theme_light()
+nhvs %>% select(nhhgidr, t, density = n) %>%
+  ggplot(mapping = aes(x = nhhgidr, y = t, color = density)) + geom_point() +
+  labs(title = "New Horizons SWAP proton Temperature", x = "Distance from Sun (AU)", y = "K") +
+  theme_light()
+nhvs %>% select(ts, t, speed = v) %>% 
+  ggplot(mapping = aes(x = ts, y = t, color = speed)) + geom_point() +
+  labs(title = "New Horizons SWAP proton Temperature", x = "Time", y = "K") +
+  theme_light()
+nhvs %>% select(nhhgidr, t, speed = v) %>%
+  ggplot(mapping = aes(x = nhhgidr, y = t, color = speed)) + geom_point() +
+  labs(title = "New Horizons SWAP proton Temperature", x = "Distance from Sun (AU)", y = "K") +
+  theme_light()
+```
+
+## Density, Temperature and Speed
+
+```{r plots density pressure, warning=FALSE, message=FALSE}
+ggplot(data = nhvs, mapping = aes(x = n, y = t, color = v)) +
+  geom_point() +
+  labs(title = "New Horizons SWAP protons", x = "Density (cm**-3)", y = "Temperature (K)") +
+  theme_light()
+ggplot(data = nhvs, mapping = aes(x = v, y = t, color = n)) +
+  geom_point() +
+  labs(title = "New Horizons SWAP protons", x = "Speed (km/s)", y = "Temperature (K)") +
+  theme_light()
+ggplot(data = nhvs, mapping = aes(x = n, y = v, color = t)) +
+  geom_point() +
+  labs(title = "New Horizons SWAP protons", x = "Density (cm**-3)", y = "Speed (km/s)") +
+  theme_light()
+```

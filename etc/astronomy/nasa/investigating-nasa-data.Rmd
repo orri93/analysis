@@ -1,0 +1,44 @@
+---
+title: "Investigating NASA Data"
+author: "Geirmundur Orri Sigurdsson"
+date: "4/16/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+A lot of the data collected by NASA space probes are publicly available from example:
+
+[spdf.gsfc.nasa.gov](https://spdf.gsfc.nasa.gov/pub/data)
+
+Here is a collection of some of investigation of the data.
+
+All [the code is available on GitHub](https://github.com/orri93/analysis/tree/master/etc/astronomy)
+
+# [Pioneer 10](https://en.wikipedia.org/wiki/Pioneer_10)
+
+## Charged Particle Instrument (CPI) Data
+
+![Pioneer 10 CPI](https://upload.wikimedia.org/wikipedia/commons/archive/9/9a/20110203223202%21Pioneer_10-11_-_P52a_-_fx.jpg)
+
+* [Charged Particles around Jupiter](https://orri.blob.core.windows.net/reports/inspect-pioneer10-cpi-jupiter.html)
+* [Charged Particles throughout the mission](https://orri.blob.core.windows.net/reports/inspect-pioneer10-cpi-dist-1.html)
+
+# [Voyager](https://en.wikipedia.org/wiki/Voyager_program)
+
+## Cosmic Ray System (CRS) Data
+
+![Voyager CRS](https://upload.wikimedia.org/wikipedia/commons/3/3d/Voyager_CRS.jpg)
+
+* [Cosmic Ray](https://orri.blob.core.windows.net/reports/inspect-voyager-cosmic-ray.html)
+
+# [New Horizons](https://en.wikipedia.org/wiki/New_Horizons)
+
+## Solar Wind Around Pluto (SWAP) Data
+
+![New Horizons SWAP](https://upload.wikimedia.org/wikipedia/commons/thumb/9/9b/New_Horizons_SWAP.jpg/120px-New_Horizons_SWAP.jpg)
+
+* [Solar Wind ions](https://orri.blob.core.windows.net/reports/inspect-new-horizons-swap-ions.html)
+* [Solar Wind protons]()

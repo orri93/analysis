@@ -11,7 +11,7 @@ public final class App {
     SolarOrbiter.ProcessSolarOrbiterTrajectory();
     // NewHorizons.ProcessNewHorizonsTrajectory();
     // NewHorizons.ProcessNewHorizonsSwapIons();
-    // NewHorizons.ProcessNewHorizonsSwapValidSum2008();
-    NewHorizons.ProcessNewHorizonsSwapIonsHistogram();
+    NewHorizons.ProcessNewHorizonsSwapValidSum2008();
+    // NewHorizons.ProcessNewHorizonsSwapIonsHistogram();
   }
 }

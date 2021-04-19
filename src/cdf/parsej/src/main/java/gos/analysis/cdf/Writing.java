@@ -35,10 +35,10 @@ public class Writing {
       Data data = dataMap.get(variables[i]);
       if (data != null) {
         if (i == 0) {
-          writer.write(Double.toString(data.getTime(i)));
+          writer.write(Double.toString(data.getTime(index)));
         }
         writer.write(',');
-        writer.write(Double.toString(data.getValue(i)));
+        writer.write(Double.toString(data.getValue(index)));
       } else {
         return false;
       }

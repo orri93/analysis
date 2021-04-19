@@ -41,6 +41,11 @@ out/
 #
 ~$*.xlsx
 
+#
+# RPubs
+#
+rsconnect/
+
 # Other
 [Dd]ebug
 [Rr]elease

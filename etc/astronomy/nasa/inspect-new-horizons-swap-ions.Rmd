@@ -9,7 +9,6 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-
 [The R Markdown code is available on GitHub](https://github.com/orri93/analysis/blob/master/etc/astronomy/nasa/inspect-new-horizons-swap-ions.Rmd)
 
 # Dependencies
@@ -19,6 +18,20 @@ library(lubridate)
 library(tidyverse)
 library(hrbrthemes)
 library(viridis)
+```
+
+# Functions
+
+## Function for formatting linar model
+
+```{r function format model}
+formatmodel <- function(m, eq_digits = 2, r_digits = 3) {
+  eq <- substitute(italic(y) == a + b %.% italic(x)*","~~italic(r)^2~"="~r2, list(
+    a = format(unname(coef(m)[1]), digits = eq_digits),
+    b = format(unname(coef(m)[2]), digits = eq_digits),
+    r2 = format(summary(m)$r.squared, digits = r_digits)))
+  as.character(as.expression(eq));
+}
 ```
 
 # Read Data
@@ -47,14 +60,30 @@ summary(nhions$ts)
 summary(nhions$distance)
 ```
 
+# Estimate the speed
+
+Compare with 12.26 km/s according to Wikipedia
+
+```{r speed}
+model <- lm(formula = distance ~ time, data = nhions)
+coefficients <- coef(model)
+speed <- coefficients[2] # AU/μs
+speed <- speed * 149597870.7 * 1000 # Convert to km/s
+speed
+```
+
 # Plots
 
 ## Distance from sun
 
-```{r plots distance sun, warning=FALSE}
-ggplot(data = nhions) +
-  geom_point(aes(x = ts, y = distance)) +
-  labs(title = "New Horizons SWAP ions data", x = "Time", y = "Distance from Sun (AU)") +
+```{r plots distance sun, warning=FALSE, message=FALSE}
+speedtext <- sprintf("Estimated speed %f km/s", speed)
+modeleq <- formatmodel(model, eq_digits = 3, r_digits = 4)
+ggplot(data = nhions, mapping = aes(x = ts, y = distance)) +
+  geom_point() +
+  geom_smooth(method = 'lm') +
+  labs(title = "New Horizons SWAP ions data", subtitle = speedtext, x = "Time", y = "Distance from Sun (AU)") +
+  geom_text(data = nhions[25,], label = modeleq, vjust = -5, parse = TRUE) +
   theme_light()
 ```
 
@@ -84,19 +113,22 @@ ggplot(data = nhions) +
   theme_light()
 ```
 
-## Density and Pressure
+## Density, Temperature and Pressure
 
-```{r plots density pressure, warning=FALSE}
-ggplot(data = nhions) +
-  geom_point(aes(x = density, y = temperature, color = pressure)) +
+```{r plots density pressure, message=FALSE, warning=FALSE}
+ggplot(data = nhions, mapping = aes(x = density, y = temperature, color = pressure)) +
+  geom_point() +
   labs(title = "New Horizons SWAP ions", x = "Density (cm**-3)", y = "Temperature (K)") +
   theme_light()
-ggplot(data = nhions) +
-  geom_point(aes(x = pressure, y = temperature, color = density)) +
+ggplot(data = nhions, mapping = aes(x = pressure, y = temperature, color = density)) +
+  geom_point() +
   labs(title = "New Horizons SWAP ions", x = "Pressure (pPa)", y = "Temperature (K)") +
   theme_light()
-ggplot(data = nhions) +
-  geom_point(aes(x = density, y = pressure, color = temperature)) +
+pdmodel <- lm(formula = pressure ~ density, data = nhions)
+pdmodeleq <- formatmodel(pdmodel, eq_digits = 3, r_digits = 4)
+ggplot(data = nhions, mapping = aes(x = density, y = pressure, color = temperature)) +
+  geom_point() + geom_smooth(method = 'lm') +
   labs(title = "New Horizons SWAP ions", x = "Density (cm**-3)", y = "Pressure (pPa)") +
+  geom_text(data = nhions[40,], label = modeleq, vjust = -10, parse = TRUE) +
   theme_light()
 ```

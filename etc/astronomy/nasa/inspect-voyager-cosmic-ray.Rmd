@@ -7,7 +7,7 @@ output:
 
 # Dependencies
 
-```{r dependencies}
+```{r dependencies, message=FALSE, warning=FALSE}
 library(tidyverse)
 library(lubridate)
 library(data.table)
