@@ -1,9 +1,13 @@
 ---
 title: "Investigating NASA Voyager Cosmic Ray Subsystem"
-output:
-  html_document:
-    df_print: paged
+author: "Geirmundur Orri Sigurdsson"
+date: "4/16/2021"
+output: html_document
 ---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
 
 # Dependencies
 
@@ -25,20 +29,32 @@ aggnrmean <- function(df, n = 5, FUN = mean) {
 }
 ```
 
+## Function for formatting linear model
+
+```{r function format model}
+formatmodel <- function(m, eq_digits = 2, r_digits = 3) {
+  eq <- substitute(italic(y) == a + b %.% italic(x)*","~~italic(r)^2~"="~r2, list(
+    a = format(unname(coef(m)[1]), digits = eq_digits),
+    b = format(unname(coef(m)[2]), digits = eq_digits),
+    r2 = format(summary(m)$r.squared, digits = r_digits)))
+  as.character(as.expression(eq));
+}
+```
+
 # Download Data
 
 ## Download Trajectory data
 
 Format information see <https://spdf.gsfc.nasa.gov/pub/data/voyager/voyager1/traj/ssc/vy1trj_ssc_fmt.txt>
 
-```{r download trajectory data, message=FALSE}
+```{r download trajectory data, echo=TRUE, message=FALSE, warning=FALSE, results='hide'}
 rtrajv1 <- fread("https://spdf.gsfc.nasa.gov/pub/data/voyager/voyager1/traj/ssc/vy1trj_ssc_1d.asc")
 rtrajv2 <- fread("https://spdf.gsfc.nasa.gov/pub/data/voyager/voyager2/traj/ssc/vy2trj_ssc_1d.asc")
 ```
 
 ## Download HET-I Coincidence Rates A-Stopping H and He
 
-```{r download crs data, message=FALSE}
+```{r download crs data, echo=TRUE, message=FALSE, warning=FALSE, results='hide'}
 rasthhev1 <- fread("https://voyager.gsfc.nasa.gov/crs/lists/v1/p_1788e9c83f7.txt")
 rasthhev2 <- fread("https://voyager.gsfc.nasa.gov/crs/lists/v2/p_1788e9c83f7.txt")
 ```
@@ -134,31 +150,59 @@ setkey(trasthhev2, v2hradau)
 trasthhe <- trasthhev1[ trasthhev2, roll = "nearest" ]
 ```
 
+# Estimate the speed
+
+From Trajectory data the speed can be estimated 
+
+```{r speed}
+modelv1 <- lm(formula = v1hradau ~ tv1ts, data = trajv1)
+modelv2 <- lm(formula = v2hradau ~ tv2ts, data = trajv2)
+coefficientsv1 <- coef(modelv1)
+coefficientsv2 <- coef(modelv2)
+speedv1 <- coefficientsv1[2] # AU/μs
+speedv2 <- coefficientsv2[2] # AU/μs
+speedv1 <- speedv1 * 149597870.7 # Convert to km/s
+speedv2 <- speedv2 * 149597870.7 # Convert to km/s
+speedv1
+speedv2
+```
+
 # Plots
 
 ## Plot Voyager 1 and 2 Trajectory data
 
-```{r plot V1 and v2 trajectory}
+```{r plot V1 and v2 trajectory, message=FALSE, warning=FALSE}
 ptraj <- melt(traj %>% select(date = tv1ts, "voyager 1" = v1hradau, "voyager 2" = v2hradau), id = "date")
-ggplot(data = ptraj) +
-  geom_line(aes(x = date, y = value, color = variable)) +
-  labs(title = "Voyager 1 and 2 Trajectory", x = "Date", y = "Heliospheric radial distance (AU)")
+ggplot(data = ptraj, mapping = aes(x = date, y = value, color = variable)) +
+  geom_point() + geom_smooth(method = 'lm') +
+  labs(title = "Voyager 1 and 2 Trajectory", x = "Date", y = "Heliospheric radial distance (AU)") +
+  geom_hline(yintercept = 5.2, linetype = 'dashed', color = 'brown') +
+  geom_hline(yintercept = 9.6, linetype = 'dashed', color = 'red') +
+  geom_hline(yintercept = 19, linetype = 'dashed', color = 'green') +
+  geom_hline(yintercept = 30, linetype = 'dashed', color = 'blue') +
+  geom_hline(yintercept = 50, linetype = 'dashed', color = 'blue') +
+  geom_hline(yintercept = 90, linetype = 'dashed', color = 'darkgoldenrod') +
+  theme_light()
 ptraj <- melt(traj %>% select(date = tv1ts, "voyager 1" = v1seclat, "voyager 2" = v2seclat), id = "date")
 ggplot(data = ptraj) +
   geom_line(aes(x = date, y = value, color = variable)) +
-  labs(title = "Voyager 1 and 2 Trajectory", x = "Date", y = "Solar ecliptic latitude (°)")
+  labs(title = "Voyager 1 and 2 Trajectory", x = "Date", y = "Solar ecliptic latitude (°)") +
+  theme_light()
 ptraj <- melt(traj %>% select(date = tv1ts, "voyager 1" = v1seclon, "voyager 2" = v2seclon), id = "date")
 ggplot(data = ptraj) +
   geom_line(aes(x = date, y = value, color = variable)) +
-  labs(title = "Voyager 1 and 2 Trajectory", x = "Date", y = "Solar ecliptic longitude (°)")
+  labs(title = "Voyager 1 and 2 Trajectory", x = "Date", y = "Solar ecliptic longitude (°)") +
+  theme_light()
 ptraj <- melt(trajv1 %>% select(date = tv1ts, "Latitude" = v1hellat, "Longitude (asc node)" = v1hillon), id = "date")
 ggplot(data = ptraj) +
   geom_line(aes(x = date, y = value, color = variable)) +
-  labs(title = "Voyager 1 Solar heliographic Trajectory", x = "Date", y = "Degrees")
+  labs(title = "Voyager 1 Solar heliographic Trajectory", x = "Date", y = "Degrees") +
+  theme_light()
 ptraj <- melt(trajv2 %>% select(date = tv2ts, "Latitude" = v2hellat, "Longitude (asc node)" = v2hillon), id = "date")
 ggplot(data = ptraj) +
   geom_line(aes(x = date, y = value, color = variable)) +
-  labs(title = "Voyager 2 Solar heliographic Trajectory", x = "Date", y = "Degrees")
+  labs(title = "Voyager 2 Solar heliographic Trajectory", x = "Date", y = "Degrees") +
+  theme_light()
 ```
 
 ## Plot Voyager 1 and 2 Cosmic Ray Data
@@ -168,11 +212,13 @@ pasthhe <- melt(asthhe %>% select(date = v2ts, "voyager 1" = v1v2, "voyager 2" =
 ggplot(data = pasthhe) +
   geom_line(aes(x = date, y = value, color = variable)) +
   scale_y_continuous(trans = 'log10') +
-  labs(title = "Voyager 1 and 2 Cosmic Ray Subsystem (CRS)", x = "Date", y = "HET-I Coincidence Rates A-Stopping H and He")
+  labs(title = "Voyager 1 and 2 Cosmic Ray Subsystem (CRS)", x = "Date", y = "HET-I Coincidence Rates A-Stopping H and He") +
+  theme_light()
 pasthhe <- melt(asthhe %>% select(date = v2ts, "voyager 1" = v1v3, "voyager 2" = v2v3), id = "date")
 ggplot(data = pasthhe) +
   geom_line(aes(x = date, y = value, color = variable)) +
-  labs(title = "Voyager 1 and 2 Cosmic Ray Subsystem (CRS)", x = "Date", y = "HET-I Coincidence Rates A-Stopping H and He")
+  labs(title = "Voyager 1 and 2 Cosmic Ray Subsystem (CRS)", x = "Date", y = "HET-I Coincidence Rates A-Stopping H and He") +
+  theme_light()
 ```
 
 ## Plot Trajectory and Cosmic Ray data into one set for each Voyager
@@ -180,12 +226,26 @@ ggplot(data = pasthhe) +
 ```{r plot trajectory and crs, warning=FALSE}
 ggplot(data = trasthhev1) +
   geom_line(aes(x = v1hradau, y = v1v2), color = 'blue') +
+  geom_vline(xintercept = 5.2, linetype = 'dashed', color = 'brown') +
+  geom_vline(xintercept = 9.6, linetype = 'dashed', color = 'red') +
+  geom_vline(xintercept = 19, linetype = 'dashed', color = 'green') +
+  geom_vline(xintercept = 30, linetype = 'dashed', color = 'blue') +
+  geom_vline(xintercept = 50, linetype = 'dashed', color = 'blue') +
+  geom_vline(xintercept = 90, linetype = 'dashed', color = 'darkgoldenrod') +
   scale_y_continuous(trans = 'log10') +
-  labs(title = "Voyager 1 Trajectory with CRS", x = "Heliospheric radial distance (AU)", y = "HET-I Coincidence Rates A-Stopping H and He")
+  labs(title = "Voyager 1 Trajectory with CRS", x = "Heliospheric radial distance (AU)", y = "HET-I Coincidence Rates A-Stopping H and He") +
+  theme_light()
 ggplot(data = trasthhev2) +
   geom_line(aes(x = v2hradau, y = v2v2), color = 'green') +
+  geom_vline(xintercept = 5.2, linetype = 'dashed', color = 'brown') +
+  geom_vline(xintercept = 9.6, linetype = 'dashed', color = 'red') +
+  geom_vline(xintercept = 19, linetype = 'dashed', color = 'green') +
+  geom_vline(xintercept = 30, linetype = 'dashed', color = 'blue') +
+  geom_vline(xintercept = 50, linetype = 'dashed', color = 'blue') +
+  geom_vline(xintercept = 90, linetype = 'dashed', color = 'darkgoldenrod') +
   scale_y_continuous(trans = 'log10') +
-  labs(title = "Voyager 2 Trajectory with CRS", x = "Heliospheric radial distance (AU)", y = "HET-I Coincidence Rates A-Stopping H and He")
+  labs(title = "Voyager 2 Trajectory with CRS", x = "Heliospheric radial distance (AU)", y = "HET-I Coincidence Rates A-Stopping H and He") +
+  theme_light()
 ```
 
 ## Plot Trajectory and Cosmic Ray data from Voyager 1 and 2
@@ -194,11 +254,25 @@ ggplot(data = trasthhev2) +
 ptrasthhe <- melt(trasthhe %>% select(au = v1hradau, "voyager 1" = v1v2, "voyager 2" = v2v2), id = "au")
 ggplot(data = ptrasthhe) +
   geom_line(aes(x = au, y = value, color = variable)) +
+  geom_vline(xintercept = 5.2, linetype = 'dashed', color = 'brown') +
+  geom_vline(xintercept = 9.6, linetype = 'dashed', color = 'red') +
+  geom_vline(xintercept = 19, linetype = 'dashed', color = 'green') +
+  geom_vline(xintercept = 30, linetype = 'dashed', color = 'blue') +
+  geom_vline(xintercept = 50, linetype = 'dashed', color = 'blue') +
+  geom_vline(xintercept = 90, linetype = 'dashed', color = 'darkgoldenrod') +
   scale_y_continuous(trans = 'log10') +
-  labs(title = "Voyager 1 and 2 Cosmic Ray Subsystem (CRS)", x = "Heliospheric radial distance (AU)", y = "HET-I Coincidence Rates A-Stopping H and He")
+  labs(title = "Voyager 1 and 2 Cosmic Ray Subsystem (CRS)", x = "Heliospheric radial distance (AU)", y = "HET-I Coincidence Rates A-Stopping H and He") +
+  theme_light()
 ptrasthhe <- melt(trasthhe %>% select(au = v1hradau, "voyager 1" = v1v3, "voyager 2" = v2v3), id = "au")
 ggplot(data = ptrasthhe) +
   geom_line(aes(x = au, y = value, color = variable)) +
-  labs(title = "Voyager 1 and 2 Cosmic Ray Subsystem (CRS)", x = "Heliospheric radial distance (AU)", y = "HET-I Coincidence Rates A-Stopping H and He")
+  geom_vline(xintercept = 5.2, linetype = 'dashed', color = 'brown') +
+  geom_vline(xintercept = 9.6, linetype = 'dashed', color = 'red') +
+  geom_vline(xintercept = 19, linetype = 'dashed', color = 'green') +
+  geom_vline(xintercept = 30, linetype = 'dashed', color = 'blue') +
+  geom_vline(xintercept = 50, linetype = 'dashed', color = 'blue') +
+  geom_vline(xintercept = 90, linetype = 'dashed', color = 'darkgoldenrod') +
+  labs(title = "Voyager 1 and 2 Cosmic Ray Subsystem (CRS)", x = "Heliospheric radial distance (AU)", y = "HET-I Coincidence Rates A-Stopping H and He") +
+  theme_light()
 ```
 

@@ -1,0 +1,158 @@
+---
+title: "Investigate Planck's law"
+author: "Geirmundur Orri Sigurdsson"
+date: "4/23/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+[The R Markdown code is available on GitHub](https://github.com/orri93/analysis/blob/master/etc/physics/plancks-law.Rmd) Project orri93/analysis path etc/physics/plancks-law.Rmd
+
+[Planck's law](https://en.wikipedia.org/wiki/Planck%27s_law) describes the spectral density of electromagnetic radiation emitted by a black body in thermal equilibrium at a given temperature T, when there is no net flow of matter or energy between the body and its environment.
+
+At the end of the 19th century, physicists were unable to explain why the observed spectrum of black-body radiation, which by then had been accurately measured, diverged significantly at higher frequencies from that predicted by existing theories. In 1900, Max Planck heuristically derived a formula for the observed spectrum by assuming that a hypothetical electrically charged oscillator in a cavity that contained black-body radiation could only change its energy in a minimal increment, E, that was proportional to the frequency of its associated electromagnetic wave. This resolved the problem of the ultraviolet catastrophe predicted by classical physics. This discovery was a pioneering insight of modern physics and is of fundamental importance to quantum theory.
+
+# The law
+
+Every physical body spontaneously and continuously emits electromagnetic radiation and the spectral radiance of a body, B, describes the spectral emissive power per unit area, per unit solid angle for particular radiation frequencies. The relationship given by Planck's radiation law, given below, shows that for increasing temperature, the total radiated energy increases and the peak of the emitted spectrum shifts to shorter wavelengths. According to this, the spectral radiance of a body for frequency ν at absolute temperature T is given by
+
+$$B\left ( v,T \right ) = \frac{2hv^{3}}{c^{2}} \frac{1}{e^{\frac{hv}{k_{B}T}} - 1}$$
+
+Where
+
+*  B: Spectral radiance of a body
+*  v: Frequency
+*  T: Absolute temperature (K)
+* kB: Boltzmann constant $$1.380 649 \times 10^{-23} J\cdot K^{-1}$$
+*  h: Planck constant $$6.626 070 15 \times 10^{-34} J\cdot s$$
+*  c: Speed of light in the medium whether material or vacuum (299,792,458 m/s)
+
+The spectral radiance can also be expressed per unit wavelength λ instead of per unit frequency. By choosing an appropriate system of unit of measure (i.e. natural Planck units), the law can be simplified to become:
+
+$$B\left ( v,T \right ) = 2v^{3} \frac{1}{e^{\frac{v}{T}} - 1}$$
+
+and
+
+$$B\left ( \lambda ,T \right ) = \frac{2hc^{2}}{\lambda^{5}} \frac{1}{e^{\frac{hc}{\lambda k_{B}T}} - 1}$$
+
+The SI units are
+
+$$B_{v} : W \cdot sr^{-1} \cdot m^{-2} \cdot Hz^{-1}$$
+
+$$B_{\lambda} : W \cdot sr^{-1} \cdot m^{-3}$$
+
+# Dependencies
+
+```{r dependencies, message=FALSE, warning=FALSE}
+library(reshape2)
+library(tidyverse)
+library(ggtext)
+# For Arbitrarily Accurate Computation
+# see https://cran.r-project.org/web/packages/Rmpfr/vignettes/Rmpfr-pkg.pdf
+library(Rmpfr)
+```
+
+# Formulating as function
+
+```{r function}
+srobf <- function(v, T, precision = 128) {
+  aaone <- mpfr(1, precision)
+  aatwo <- mpfr(2, precision)
+  kB <- mpfr(1.380649E-23, precision)
+  h <- mpfr(6.62607015E-34, precision)
+  c <- mpfr(299792458, precision)
+  t1 <- aatwo * h * v * v * v / (c * c)
+  et <- h * v / (kB * T)
+  te <- exp(et)
+  as.numeric(t1 * (aaone / (te - aaone)))
+}
+srobpu <- function(v, T, precision = 128) {
+  aaone <- mpfr(1, precision)
+  aatwo <- mpfr(2, precision)
+  t1 <- aatwo * v * v * v
+  et <- v / T
+  te <- exp(et)
+  as.numeric(t1 * (aaone / (te - aaone)))
+}
+srobwl <- function(wl, T, precision = 128) {
+  aaone <- mpfr(1, precision)
+  aatwo <- mpfr(2, precision)
+  kB <- mpfr(1.380649E-23, precision)
+  h <- mpfr(6.62607015E-34, precision)
+  c <- mpfr(299792458, precision)
+  t1 <- aatwo * h * c * c / (wl * wl * wl * wl * wl)
+  et <- h * c / (wl * kB * T)
+  te <- exp(et)
+  as.numeric(t1 * (aaone / (te - aaone)))
+}
+ftowl <- function(v, precision = 128) {
+  c <- mpfr(299792458, precision)
+  as.numeric(c / v)
+}
+wltof <- function(wl, precision = 128) {
+  c <- mpfr(299792458, precision)
+  as.numeric(c / wl)
+}
+```
+
+# Creating the data
+
+```{r data}
+rwl <- seq(from = 0.001, to = 3, by = 0.001)
+dfwl <- data.frame(rwl)
+dfwl <- dfwl %>% mutate(wl = rwl / 1000000)
+dfwl <- dfwl %>% mutate(
+  srobwl1 = srobwl(wl, 3000) / 1E12,
+  srobwl2 = srobwl(wl, 4000) / 1E12,
+  srobwl3 = srobwl(wl, 5000) / 1E12)
+
+rf <- seq(from = 1, to = 1E15, by = 1E12)
+dff <- data.frame(f = rf)
+dff <- dff %>% mutate(
+  fu = f / 1E12,
+  srobf1 = srobf(f, 3000, 256),
+  srobf2 = srobf(f, 4000, 256),
+  srobf3 = srobf(f, 5000, 256))
+
+rfpu <- seq(from = 1, to = 1E5, by = 1E2)
+dffpu <- data.frame(f = rfpu)
+dffpu <- dffpu %>% mutate(
+  fu = f / 1E3,
+  srobpu1 = srobpu(f, 3000, 256),
+  srobpu2 = srobpu(f, 4000, 256),
+  srobpu3 = srobpu(f, 5000, 256))
+```
+
+# Plots
+
+## Spectral radiance of a body by Wavelength
+
+```{r plot srobwl}
+reshape2::melt(dfwl %>% select(rwl, "3000° K" = srobwl1, "4000° K" = srobwl2, "5000° K" = srobwl3), id = "rwl") %>% select(rwl, value, T = variable) %>%
+  ggplot(mapping = aes(x = rwl, y = value, color = T)) + geom_line() +
+  labs(title = "Planck's law", x = "Wavelength (μm)", y = "Spectral radiance of a body (kW·sr<sup>-1</sup>·m<sup>-2</sup>·nm<sup>-1</sup>)") +
+  theme_light() +
+  theme(axis.title.y = element_textbox_simple(width = NULL, orientation = "left-rotated"))
+```
+
+## Spectral radiance of a body by Frequency
+
+```{r plot srobf} 
+reshape2::melt(dff %>% select(fu, "3000° K" = srobf1, "4000° K" = srobf2, "5000° K" = srobf3), id = "fu") %>% select(fu, value, T = variable) %>%
+  ggplot(mapping = aes(x = fu, y = value, color = T)) + geom_line() +
+  labs(title = "Planck's law", x = "Frequency (THz)", y = "Spectral radiance of a body (W·sr<sup>-1</sup>·m<sup>-2</sup>·Hz<sup>-1</sup>)") +
+  theme_light() +
+  theme(axis.title.y = element_textbox_simple(width = NULL, orientation = "left-rotated"))
+```
+
+## Spectral radiance of a body by Frequency in Planc Units
+
+```{r plot srobpu}
+reshape2::melt(dffpu %>% select(fu, "3000° K" = srobpu1, "4000° K" = srobpu2, "5000° K" = srobpu3), id = "fu") %>% select(fu, value, T = variable) %>%
+  ggplot(mapping = aes(x = fu, y = value, color = T)) + geom_line() +
+  labs(title = "Planck's law", x = "Frequency (kHz)", y = "Spectral radiance of a body (natural Planck units)") +
+  theme_light()
+```

@@ -83,7 +83,10 @@ ggplot(data = nhions, mapping = aes(x = ts, y = distance)) +
   geom_point() +
   geom_smooth(method = 'lm') +
   labs(title = "New Horizons SWAP ions data", subtitle = speedtext, x = "Time", y = "Distance from Sun (AU)") +
-  geom_text(data = nhions[25,], label = modeleq, vjust = -5, parse = TRUE) +
+  geom_text(data = nhions[25,], label = modeleq, vjust = -10, parse = TRUE) +
+  geom_text(data = nhions[25,], label = 'Neptune and Kuiper belt start', vjust = -9.6, color = 'blue') +
+  geom_hline(yintercept = 19, linetype = 'dashed', color = 'blue') +
+  geom_hline(yintercept = 30, linetype = 'dashed', color = 'blue') +
   theme_light()
 ```
 
@@ -97,6 +100,7 @@ ggplot(data = nhions) +
 ggplot(data = nhions) +
   geom_point(aes(x = distance, y = density)) +
   labs(title = "New Horizons SWAP ions density", x = "Distance from Sun (AU)", y = "cm**-3") +
+  geom_vline(xintercept = 30, linetype = 'dashed', color = 'blue') +
   theme_light()
 ```
 

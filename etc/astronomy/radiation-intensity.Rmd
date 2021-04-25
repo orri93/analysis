@@ -5,13 +5,13 @@ date: "4/8/2021"
 output: html_document
 ---
 
-[The R Markdown code is available on GitHub](https://github.com/orri93/analysis/blob/master/etc/astronomy/radiation-intensity.Rmd)
-
-[The R script is also available on GitHub](https://github.com/orri93/analysis/blob/master/src/r/radiation-intensity.R)
-
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
+
+[The R Markdown code is available on GitHub](https://github.com/orri93/analysis/blob/master/etc/astronomy/radiation-intensity.Rmd)
+
+[The R script is also available on GitHub](https://github.com/orri93/analysis/blob/master/src/r/radiation-intensity.R)
 
 # Radiation Intensity
 

@@ -36,6 +36,18 @@ aggnrmean <- function(df, n = 5, FUN = mean) {
 }
 ```
 
+## Function for formatting linear model
+
+```{r function format model}
+formatmodel <- function(m, eq_digits = 2, r_digits = 3) {
+  eq <- substitute(italic(y) == a + b %.% italic(x)*","~~italic(r)^2~"="~r2, list(
+    a = format(unname(coef(m)[1]), digits = eq_digits),
+    b = format(unname(coef(m)[2]), digits = eq_digits),
+    r2 = format(summary(m)$r.squared, digits = r_digits)))
+  as.character(as.expression(eq));
+}
+```
+
 # Download Data
 
 ## Downloading all 1 hour CPI data and combine into one
@@ -183,14 +195,40 @@ setkey(traj, ts)
 cpitraj <- traj[mcpi, roll = "nearest"]
 ```
 
+# Estimate the speed
+
+From Trajectory data the speed can be estimated 
+
+```{r speed}
+model <- lm(formula = HRANGP ~ ts, data = traj)
+coefficients <- coef(model)
+speed <- coefficients[2] # AU/μs
+speed <- speed * 149597870.7 # Convert to km/s
+speed
+```
+
 # Plots
+
+* Jupiter                         5.2 AU: dashed brown line
+* Saturn                          9.6 AU: dashed red line
+* Uranus                         19   AU: dashed green line
+* Neptune and Kuiper belt starts 30   AU: dashed blue line
+* Kuiper belt ends               50   AU: dashed blue line
 
 ## Distance from sun
 
-```{r plots distance, warning=FALSE}
-ggplot(data = traj) +
-  geom_point(aes(x = ts, y = HRANGP)) +
-  labs(title = "Pioneer 10 Trajectory", x = "Time", y = "Distance from Sun (AU)") +
+```{r plots distance, message=FALSE, warning=FALSE}
+speedtext <- sprintf("Estimated speed %f km/s", speed)
+modeleq <- formatmodel(model, eq_digits = 3, r_digits = 4)
+ggplot(data = traj, mapping = aes(x = ts, y = HRANGP)) +
+  geom_point() + geom_smooth(method = 'lm') +
+  labs(title = "Pioneer 10 Trajectory", subtitle = speedtext, x = "Time", y = "Distance from Sun (AU)") +
+  geom_text(data = traj[1,], label = modeleq, hjust = -0.8, vjust = -12, parse = TRUE) +
+  geom_hline(yintercept = 5.2, linetype = 'dashed', color = 'brown') +
+  geom_hline(yintercept = 9.6, linetype = 'dashed', color = 'red') +
+  geom_hline(yintercept = 19, linetype = 'dashed', color = 'green') +
+  geom_hline(yintercept = 30, linetype = 'dashed', color = 'blue') +
+  geom_hline(yintercept = 50, linetype = 'dashed', color = 'blue') +
   theme_light()
 ```
 
@@ -210,6 +248,11 @@ ggplot(data = pcpi) +
   geom_point(aes(x = distance, y = value, color = variable)) +
   scale_y_continuous(trans = 'log10') +
   labs(title = "Pioneer 10 CPI Protons", x = "Distance from Sun (AU)", y = "Rate (cps)") +
+  geom_vline(xintercept = 5.2, linetype = 'dashed', color = 'brown') +
+  geom_vline(xintercept = 9.6, linetype = 'dashed', color = 'red') +
+  geom_vline(xintercept = 19, linetype = 'dashed', color = 'green') +
+  geom_vline(xintercept = 30, linetype = 'dashed', color = 'blue') +
+  geom_vline(xintercept = 50, linetype = 'dashed', color = 'blue') +
   theme_light()
 ```
 
