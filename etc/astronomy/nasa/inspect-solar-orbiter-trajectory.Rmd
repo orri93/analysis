@@ -1,0 +1,107 @@
+---
+title: "Investigating NASA Solar Orbiter Trajectory"
+author: "Geirmundur Orri Sigurdsson"
+date: "4/26/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Dependencies
+
+```{r dependencies, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(lubridate)
+library(sphereplot)
+library(plotly)
+```
+
+# Read Data
+
+```{r read data}
+rsotraj <- read.csv('../../../tmp/nasa/spdf/solar-orbiter/helio1day/solo_helio1day_position_20200211_v01.csv')
+```
+
+# Convert date time
+
+```{r convert time}
+sotraj <- rsotraj %>% mutate(
+  ts = as_datetime(time / 1000),
+  elapsed = (time - rsotraj$time[1]) / 86400000)
+```
+
+# Range
+
+# Time range
+
+```{r time range}
+summary(sotraj$ts)
+```
+
+# Distance range
+
+```{r distance range}
+summary(sotraj$rad)
+```
+
+# Transforms 3D spherical coordinates to Cartesian coordinates
+
+```{r transforms and combine}
+hcart <- sph2car(sotraj$lon, sotraj$lat, sotraj$rad)
+sotraj <- sotraj %>% mutate(x = hcart[,1], y = hcart[,2], z = hcart[,3])
+```
+
+# Plots
+
+```{r plot variables}
+current <- now()
+```
+
+## Distance from sun
+
+```{r plots distance sun, warning=FALSE, message=FALSE}
+ggplot(data = sotraj, mapping = aes(x = ts, y = rad)) + geom_point(color = 'blue') +
+  labs(title = "Solar Orbiter Trajectory data", x = "Time", y = "Distance from Sun (AU)") +
+  geom_vline(xintercept = as.numeric(current), linetype = 'dashed', color = 'blue') +
+  theme_light()
+```
+
+## 3D Scatter
+
+### Time in Trajectory
+
+```{r figure time}
+sotraj %>% select(x, y, z, Time = elapsed) %>%
+  plot_ly(x = ~x, y = ~y, z = ~z, color = ~Time) %>%
+  add_markers() %>%
+  layout(scene = list(
+    xaxis = list(title = 'AU'),
+    yaxis = list(title = 'AU'),
+    zaxis = list(title = 'AU')))
+```
+
+### Distance in Trajectory
+
+```{r figure distance}
+sotraj %>% select(x, y, z, Distance = rad) %>%
+  plot_ly(x = ~x, y = ~y, z = ~z, color = ~Distance) %>%
+  add_markers() %>%
+  layout(scene = list(
+    xaxis = list(title = 'AU'),
+    yaxis = list(title = 'AU'),
+    zaxis = list(title = 'AU')))
+```
+
+### One over Distance in Trajectory
+
+```{r figure one over distance}
+sotraj %>% mutate(oneover = 1/rad) %>% select(x, y, z, Distance = oneover) %>%
+  plot_ly(x = ~x, y = ~y, z = ~z, color = ~Distance) %>%
+  add_markers() %>%
+  layout(scene = list(
+    xaxis = list(title = 'AU'),
+    yaxis = list(title = 'AU'),
+    zaxis = list(title = 'AU')))
+```

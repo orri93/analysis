@@ -261,7 +261,7 @@ public class NewHorizons {
         }
       }
       
-      if(length > 0 && Data.areEqualTimes(dataMap)) {
+      if (length > 0 && Data.areEqualDataTimes(dataMap)) {
         Writing.WriteHeaderWithTime(writer, headers);
         for (int i = 0; i < length; i++) {
           writer.newLine();

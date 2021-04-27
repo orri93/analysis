@@ -1,5 +1,9 @@
 package gos.analysis.cdf;
 
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Set;
+
 public abstract class DataTime {
   protected double[] times;
 
@@ -38,6 +42,24 @@ public abstract class DataTime {
     }
   }
 
+  public static boolean areEqualLength(Map<String, DataTime> dataMap) {
+    Set<String> keySet = dataMap.keySet();
+    Iterator<String> it = keySet.iterator();
+    if (dataMap.size() > 2) {
+      String firstKey = it.next();
+      while (it.hasNext()) {
+        String secondKey = it.next();
+        if (dataMap.get(firstKey).times.length != dataMap.get(secondKey).times.length) {
+          return false;
+        }
+        firstKey = secondKey;
+      }
+      return true;
+    } else {
+      return false;
+    }
+  }
+
   public static boolean areEqualTimes(DataTime ...data) {
     if (areEqualLength(data)) {
       for (int i = 0; i < data[0].times.length; i++) {
@@ -46,6 +68,28 @@ public abstract class DataTime {
             return false;
           }
         }
+      }
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  public static boolean areEqualTimes(Map<String, DataTime> dataMap) {
+    if (areEqualLength(dataMap)) {
+      Set<String> keySet = dataMap.keySet();
+      Iterator<String> it = keySet.iterator();
+      String firstKey = it.next();
+      while (it.hasNext()) {
+        String secondKey = it.next();
+        DataTime firstData = dataMap.get(firstKey);
+        DataTime secondData = dataMap.get(secondKey);
+        for (int i = 0; i < firstData.times.length; i++) {
+          if (firstData.times[i] != secondData.times[i]) {
+            return false;
+          }
+        }
+        firstKey = secondKey;
       }
       return true;
     } else {

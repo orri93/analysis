@@ -8,7 +8,8 @@ import gos.analysis.nasa.SolarOrbiter;
  */
 public final class App {
   public static void main(String[] args) {
-    SolarOrbiter.ProcessSolarOrbiterTrajectory();
+    // SolarOrbiter.ProcessSolarOrbiterTrajectory();
+    SolarOrbiter.ProcessSolarOrbiterSwaL1EasObpm();
     // NewHorizons.ProcessNewHorizonsTrajectory();
     // NewHorizons.ProcessNewHorizonsSwapIons();
     NewHorizons.ProcessNewHorizonsSwapValidSum2008();

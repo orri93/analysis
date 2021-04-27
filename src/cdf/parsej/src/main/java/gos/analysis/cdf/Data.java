@@ -38,7 +38,7 @@ public class Data extends DataTime {
     }
   }
 
-  public static boolean areEqualLength(Map<String, Data> dataMap) {
+  public static boolean areEqualDataLength(Map<String, Data> dataMap) {
     Set<String> keySet = dataMap.keySet();
     Iterator<String> it = keySet.iterator();
     if (dataMap.size() > 2) {
@@ -56,8 +56,8 @@ public class Data extends DataTime {
     }
   }
 
-  public static boolean areEqualTimes(Map<String, Data> dataMap) {
-    if (areEqualLength(dataMap)) {
+  public static boolean areEqualDataTimes(Map<String, Data> dataMap) {
+    if (areEqualDataLength(dataMap)) {
       Set<String> keySet = dataMap.keySet();
       Iterator<String> it = keySet.iterator();
       String firstKey = it.next();

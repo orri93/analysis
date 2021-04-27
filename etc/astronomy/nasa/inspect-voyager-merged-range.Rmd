@@ -1,7 +1,7 @@
 ---
-title: "Investigating NASA Voyager Merged Data"
+title: "Investigating NASA Voyager Merged Data for Heliopause"
 author: "Geirmundur Orri Sigurdsson"
-date: "4/20/2021"
+date: "4/26/2021"
 output: html_document
 ---
 
@@ -14,22 +14,9 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r dependencies, message=FALSE, warning=FALSE}
 library(tidyverse)
 library(lubridate)
-library(data.table)
+library(data.table) # For fread
+library(foreach)
 library(ggtext)
-```
-
-# Functions
-
-## Function for formatting linear model
-
-```{r function format model}
-formatmodel <- function(m, eq_digits = 2, r_digits = 3) {
-  eq <- substitute(italic(y) == a + b %.% italic(x)*","~~italic(r)^2~"="~r2, list(
-    a = format(unname(coef(m)[1]), digits = eq_digits),
-    b = format(unname(coef(m)[2]), digits = eq_digits),
-    r2 = format(summary(m)$r.squared, digits = r_digits)))
-  as.character(as.expression(eq));
-}
 ```
 
 # Download Data
@@ -42,8 +29,20 @@ Format information see:
 * [VOYAGER-2 INTERPLANETARY DATA](https://spdf.gsfc.nasa.gov/pub/data/voyager/voyager2/merged/vy2mgd.txt)
 
 ```{r download data, echo=TRUE, message=FALSE, warning=FALSE, results='hide'}
-rdmv1 <- fread("https://spdf.gsfc.nasa.gov/pub/data/voyager/voyager1/merged/voyager1_daily.asc")
-rdmv2 <- fread("https://spdf.gsfc.nasa.gov/pub/data/voyager/voyager2/merged/voyager2_daily.asc")
+pathv1 <- 'https://spdf.gsfc.nasa.gov/pub/data/voyager/voyager1/merged/vy1_'
+pathv2 <- 'https://spdf.gsfc.nasa.gov/pub/data/voyager/voyager2/merged/vy2_'
+yseqv1 <- seq(from = 2012, to = 2013)
+yseqv2 <- seq(from = 2017, to = 2018)
+rdmv1 <- data.frame()      # Empty data frame for result
+rdmv2 <- data.frame()      # Empty data frame for result
+foreach(y = yseqv1) %do% {
+  urlv1 <- paste(pathv1, as.character(y), '.asc', sep = '')
+  rdmv1 <- rbind(rdmv1, fread(urlv1)) 
+}
+foreach(y = yseqv2) %do% {
+  urlv2 <- paste(pathv2, as.character(y), '.asc', sep = '')
+  rdmv2 <- rbind(rdmv2, fread(urlv2))
+}
 ```
 
 # Convert date time
@@ -148,33 +147,6 @@ dmv2 <- na_if(dmv2, 9999999)
 dmv2 <- na_if(dmv2, 9.999E5)
 ```
 
-# Convert to data tables
-
-```{r convert to data tables}
-setDT(dmv1)
-setDT(dmv2)
-```
-
-# Combine data
-
-## Combine Voyager 1 and 2 merged data into one set by time
-
-```{r combine v1 and v2 by time}
-setkey(dmv1, ts)
-setkey(dmv2, ts)
-dmv <- dmv2[dmv1, roll = "nearest"]
-```
-
-## Combine Voyager 1 and 2 merged data into one set by distance from sun
-
-```{r combine v1 and v2 by distance}
-dmv1d <- dmv1[,-1] %>% filter(!is.na(V1HRANG))
-dmv2d <- dmv2[,-1] %>% filter(!is.na(V2HRANG))
-setkey(dmv1d, V1HRANG)
-setkey(dmv2d, V2HRANG)
-dmvd <- dmv1d[dmv2d, roll = "nearest"]
-```
-
 # Estimate the speed
 
 From Trajectory data the speed can be estimated 
@@ -194,59 +166,54 @@ speedv2
 
 # Plots
 
-* Jupiter                         5.2 AU: dashed brown line
-* Saturn                          9.6 AU: dashed red line
-* Uranus                         19   AU: dashed green line
-* Neptune and Kuiper belt starts 30   AU: dashed blue line
-* Kuiper belt ends               50   AU: dashed blue line
-* Heliosphere upwind             90   AU: dashed golden line
+## Heliopause
+
+Two Voyager program spacecraft explored the outer reaches of the heliosphere, passing through the termination shock and the heliosheath. Voyager 1 encountered the heliopause on 25 August 2012, when the spacecraft measured a forty-fold sudden increase in plasma density. Voyager 2 traversed the heliopause on 5 November 2018. Because the heliopause marks the boundary between matter originating from the Sun and matter originating from the rest of the galaxy, spacecraft that depart the heliosphere (such as the two Voyagers) are in interstellar space.
+
+See [Heliosphere](https://en.wikipedia.org/wiki/Heliosphere)
+
+* Heliosphere upwind Voyager 1             121.6   AU: dashed blue
+* Heliosphere upwind Voyager 2             119.0   AU: dashed green
+
+```{r plot variables}
+hsauv1 <- 121.6
+hsauv2 <- 119.0
+# According to https://en.wikipedia.org/wiki/Heliosphere
+hsdv1 <- as_datetime('2012-08-25')
+hsdv2 <- as_datetime('2018-11-05')
+```
 
 ## Distance from sun
 
 ```{r plots distance, message=FALSE, warning=FALSE}
-pd <- melt(dmv %>% select(date = ts, "voyager 1" = V1HRANG, "voyager 2" = V2HRANG), id = "date")
-ggplot(data = pd, mapping = aes(x = date, y = value, color = variable)) +
-  geom_point() + geom_smooth(method = 'lm') +
-  labs(title = "Voyager 1 and 2 Distance from Sun", x = "Date", y = "Heliographic distance (AU)") +
-  geom_hline(yintercept = 5.2, linetype = 'dashed', color = 'brown') +
-  geom_hline(yintercept = 9.6, linetype = 'dashed', color = 'red') +
-  geom_hline(yintercept = 19, linetype = 'dashed', color = 'green') +
-  geom_hline(yintercept = 30, linetype = 'dashed', color = 'blue') +
-  geom_hline(yintercept = 50, linetype = 'dashed', color = 'blue') +
-  geom_hline(yintercept = 90, linetype = 'dashed', color = 'darkgoldenrod') +
+ggplot(data = dmv1, mapping = aes(x = ts, y = V1HRANG)) +
+  geom_point(color = 'blue') + geom_smooth(method = 'lm') +
+  labs(title = "Voyager 1 Distance from Sun", x = "Date", y = "Heliographic distance (AU)") +
+  geom_hline(yintercept = hsauv1, linetype = 'dashed', color = 'blue') +
+  geom_vline(xintercept = as.numeric(hsdv1), linetype = 'dashed', color = 'blue') +
+  theme_light()
+ggplot(data = dmv2, mapping = aes(x = ts, y = V2HRANG)) +
+  geom_point(color = 'green') + geom_smooth(method = 'lm') +
+  labs(title = "Voyager 2 Distance from Sun", x = "Date", y = "Heliographic distance (AU)") +
+  geom_hline(yintercept = hsauv2, linetype = 'dashed', color = 'green') +
+  geom_vline(xintercept = as.numeric(hsdv2), linetype = 'dashed', color = 'green') +
   theme_light()
 ```
 
-## Plot Voyager 1 and 2 Proton density
+## Plot Voyager 2 Proton density
 
 ```{r plots proton density}
-dmv1 %>% filter(!is.na(V1PD)) %>%
-  ggplot(mapping = aes(x = ts, y = V1PD)) + geom_point(color = 'blue') +
-  scale_y_continuous(trans = 'log10') +
-  labs(title = "Voyager 1 Proton Density", x = "Date", y = "Density (n/cc)") +
-  theme_light()
-dmv1 %>% filter(!is.na(V1PD)) %>%
-  ggplot(mapping = aes(x = V1HRANG, y = V1PD)) + geom_point(color = 'blue') +
-  scale_y_continuous(trans = 'log10') +
-  labs(title = "Voyager 1 Proton Density", x = "Distance (AU)", y = "Density (n/cc)") +
-  geom_vline(xintercept = 5.2, linetype = 'dashed', color = 'brown') +
-  geom_vline(xintercept = 9.6, linetype = 'dashed', color = 'red') +
-  theme_light()
 dmv2 %>% filter(!is.na(V2PPD)) %>%
   ggplot(mapping = aes(x = ts, y = V2PPD)) + geom_point(color = 'green') +
   scale_y_continuous(trans = 'log10') +
   labs(title = "Voyager 2 Proton Density", x = "Date", y = "Density (n/cc)") +
+  geom_vline(xintercept = as.numeric(hsdv2), linetype = 'dashed', color = 'green') +
   theme_light()
 dmv2 %>% filter(!is.na(V2PPD)) %>%
   ggplot(mapping = aes(x = V2HRANG, y = V2PPD)) + geom_point(color = 'green') +
   scale_y_continuous(trans = 'log10') +
   labs(title = "Voyager 2 Proton Density", x = "Distance (AU)", y = "Density (n/cc)") +
-  geom_vline(xintercept = 5.2, linetype = 'dashed', color = 'brown') +
-  geom_vline(xintercept = 9.6, linetype = 'dashed', color = 'red') +
-  geom_vline(xintercept = 19, linetype = 'dashed', color = 'green') +
-  geom_vline(xintercept = 30, linetype = 'dashed', color = 'blue') +
-  geom_vline(xintercept = 50, linetype = 'dashed', color = 'blue') +
-  geom_vline(xintercept = 90, linetype = 'dashed', color = 'darkgoldenrod') +
+  geom_vline(xintercept = hsauv2, linetype = 'dashed', color = 'green') +
   theme_light()
 ```
 
@@ -261,7 +228,9 @@ melt(dmv1 %>% select(date = ts,
   "22.0-31.0 MeV" = V1LECP3), id = "date") %>% filter(!is.na(value)) %>%
   ggplot(mapping = aes(x = date, y = value, color = variable)) + geom_point() +
   scale_y_continuous(trans = 'log10') +
-  labs(title = "Voyager 1", x = "Date", y = yat) + theme_light() + theme(axis.title.y = yet)
+  labs(title = "Voyager 1", x = "Date", y = yat) +
+  geom_vline(xintercept = as.numeric(hsdv1), linetype = 'dashed', color = 'blue') +
+  theme_light() + theme(axis.title.y = yet)
 melt(dmv1 %>% select(distance = V1HRANG,
   "0.57-1.78 MeV" = V1LECP1,
   "3.40-17.6 Mev" = V1LECP2,
@@ -269,12 +238,7 @@ melt(dmv1 %>% select(distance = V1HRANG,
   ggplot(mapping = aes(x = distance, y = value, color = variable)) + geom_point() +
   scale_y_continuous(trans = 'log10') +
   labs(title = "Voyager 1", x = "Distance (AU)", y = yat) +
-  geom_vline(xintercept = 5.2, linetype = 'dashed', color = 'brown') +
-  geom_vline(xintercept = 9.6, linetype = 'dashed', color = 'red') +
-  geom_vline(xintercept = 19, linetype = 'dashed', color = 'green') +
-  geom_vline(xintercept = 30, linetype = 'dashed', color = 'blue') +
-  geom_vline(xintercept = 50, linetype = 'dashed', color = 'blue') +
-  geom_vline(xintercept = 90, linetype = 'dashed', color = 'darkgoldenrod') +
+  geom_vline(xintercept = hsauv1, linetype = 'dashed', color = 'blue') +
   theme_light() + theme(axis.title.y = yet)
 melt(dmv2 %>% select(date = ts,
   "0.52-1.45 MeV" = V2LECP1,
@@ -282,7 +246,9 @@ melt(dmv2 %>% select(date = ts,
   "22.0-30.0 MeV" = V2LECP3), id = "date") %>% filter(!is.na(value)) %>%
   ggplot(mapping = aes(x = date, y = value, color = variable)) + geom_point() +
   scale_y_continuous(trans = 'log10') +
-  labs(title = "Voyager 2", x = "Date", y = yat) + theme_light() + theme(axis.title.y = yet)
+  labs(title = "Voyager 2", x = "Date", y = yat) +
+  geom_vline(xintercept = as.numeric(hsdv2), linetype = 'dashed', color = 'green') +
+  theme_light() + theme(axis.title.y = yet)
 melt(dmv2 %>% select(distance = V2HRANG,
   "0.52-1.45 MeV" = V2LECP1,
   "3.04-17.3 Mev" = V2LECP2,
@@ -290,12 +256,7 @@ melt(dmv2 %>% select(distance = V2HRANG,
   ggplot(mapping = aes(x = distance, y = value, color = variable)) + geom_point() +
   scale_y_continuous(trans = 'log10') +
   labs(title = "Voyager 2", x = "Distance (AU)", y = yat) +
-  geom_vline(xintercept = 5.2, linetype = 'dashed', color = 'brown') +
-  geom_vline(xintercept = 9.6, linetype = 'dashed', color = 'red') +
-  geom_vline(xintercept = 19, linetype = 'dashed', color = 'green') +
-  geom_vline(xintercept = 30, linetype = 'dashed', color = 'blue') +
-  geom_vline(xintercept = 50, linetype = 'dashed', color = 'blue') +
-  geom_vline(xintercept = 90, linetype = 'dashed', color = 'darkgoldenrod') +
+  geom_vline(xintercept = hsauv2, linetype = 'dashed', color = 'green') +
   theme_light() + theme(axis.title.y = yet)
 ```
 
@@ -322,7 +283,9 @@ melt(dmv1 %>% select(date = ts,
   "270.050-346.034 MeV" = V1CRS16), id = "date") %>% filter(!is.na(value)) %>%
   ggplot(mapping = aes(x = date, y = value, color = variable)) + geom_point() +
   scale_y_continuous(trans = 'log10') +
-  labs(title = "Voyager 1", x = "Date", y = yat) + theme_light() + theme(axis.title.y = yet)
+  labs(title = "Voyager 1", x = "Date", y = yat) +
+  geom_vline(xintercept = as.numeric(hsdv1), linetype = 'dashed', color = 'blue') +
+  theme_light() + theme(axis.title.y = yet)
 melt(dmv1 %>% select(distance = V1HRANG,
   "3.000-4.600 MeV" = V1CRS01,
   "4.600-6.200 MeV" = V1CRS02,
@@ -342,12 +305,7 @@ melt(dmv1 %>% select(distance = V1HRANG,
   ggplot(mapping = aes(x = distance, y = value, color = variable)) + geom_point() +
   scale_y_continuous(trans = 'log10') +
   labs(title = "Voyager 1", x = "Distance (AU)", y = yat) +
-  geom_vline(xintercept = 5.2, linetype = 'dashed', color = 'brown') +
-  geom_vline(xintercept = 9.6, linetype = 'dashed', color = 'red') +
-  geom_vline(xintercept = 19, linetype = 'dashed', color = 'green') +
-  geom_vline(xintercept = 30, linetype = 'dashed', color = 'blue') +
-  geom_vline(xintercept = 50, linetype = 'dashed', color = 'blue') +
-  geom_vline(xintercept = 90, linetype = 'dashed', color = 'darkgoldenrod') +
+  geom_vline(xintercept = hsauv1, linetype = 'dashed', color = 'blue') +
   theme_light() + theme(axis.title.y = yet)
 melt(dmv2 %>% select(date = ts,
   "3.000-4.600 MeV" = V2CRS01,
@@ -370,8 +328,10 @@ melt(dmv2 %>% select(date = ts,
   "478.623-598.667 MeV" = V2CRS18), id = "date") %>% filter(!is.na(value)) %>%
   ggplot(mapping = aes(x = date, y = value, color = variable)) + geom_point() +
   scale_y_continuous(trans = 'log10') +
-  labs(title = "Voyager 2", x = "Date", y = yat) + theme_light() + theme(axis.title.y = yet)
-melt(dmv2 %>% select(distance = V2HRANG,
+  labs(title = "Voyager 2", x = "Date", y = yat) +
+  geom_vline(xintercept = as.numeric(hsdv2), linetype = 'dashed', color = 'green') +
+  theme_light() + theme(axis.title.y = yet)
+melt(dmv2 %>% filter(!is.na(V2HRANG)) %>% select(distance = V2HRANG,
   "3.000-4.600 MeV" = V2LECP1,
   "4.600-6.200 MeV" = V2LECP2,
   "6.200-7.700 MeV" = V2LECP3,
@@ -393,11 +353,6 @@ melt(dmv2 %>% select(distance = V2HRANG,
   ggplot(mapping = aes(x = distance, y = value, color = variable)) + geom_point() +
   scale_y_continuous(trans = 'log10') +
   labs(title = "Voyager 2", x = "Distance (AU)", y = yat) +
-  geom_vline(xintercept = 5.2, linetype = 'dashed', color = 'brown') +
-  geom_vline(xintercept = 9.6, linetype = 'dashed', color = 'red') +
-  geom_vline(xintercept = 19, linetype = 'dashed', color = 'green') +
-  geom_vline(xintercept = 30, linetype = 'dashed', color = 'blue') +
-  geom_vline(xintercept = 50, linetype = 'dashed', color = 'blue') +
-  geom_vline(xintercept = 90, linetype = 'dashed', color = 'darkgoldenrod') +
+  geom_vline(xintercept = hsauv2, linetype = 'dashed', color = 'green') +
   theme_light() + theme(axis.title.y = yet)
 ```

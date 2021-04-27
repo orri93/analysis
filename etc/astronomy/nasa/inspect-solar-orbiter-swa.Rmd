@@ -1,0 +1,104 @@
+---
+title: "Investigating NASA Solar Orbiter SWA Data"
+author: "Geirmundur Orri Sigurdsson"
+date: "4/27/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Dependencies
+
+```{r dependencies, message=FALSE, warning=FALSE}
+library(psych)      # For describe
+library(tidyverse)
+library(lubridate)
+library(data.table)
+library(sphereplot)
+library(plotly)
+library(ggtext)
+```
+
+# Functions
+
+## Aggregate Functions
+
+```{r aggregate functions}
+aggregatedf <- function(df, n = 5, FUN = mean) {
+  aggregate(df,
+          by = list(gl(ceiling(nrow(df)/n), n)[1:nrow(df)]),
+          FUN = FUN)[-1]
+}
+```
+
+# Read Data
+
+## Read Trajectory Data
+
+```{r read trajectory}
+rsotraj <- read.csv('../../../tmp/nasa/spdf/solar-orbiter/helio1day/solo_helio1day_position_20200211_v01.csv')
+```
+
+## Read SWA Data
+
+```{r read swa}
+soswa <- read.csv('../../../tmp/nasa/spdf/solar-orbiter/swa/science/l1/eas-onbpartmoms/2020/solo_l1_swa-eas-onbpartmoms.csv')
+```
+
+# Aggregate SWA Data
+
+```{r aggregate}
+soswa <- aggregatedf(soswa, n = 100)
+```
+
+# Time range and filtering
+
+```{r time range and filter}
+sotraj <- rsotraj %>% filter(time >= min(soswa$time) & time <= max(soswa$time))
+```
+
+# Distance model
+
+```{r distance modeling}
+trajmodel <- lm(formula = rad ~ poly(time,4), data = sotraj)
+summary(trajmodel)
+predicted <- predict(trajmodel, newdata = data.frame(time = soswa$time), interval = 'confidence')
+soswa <- soswa %>% mutate(distance = predicted[,1])
+```
+
+# Convert date time
+
+```{r convert time}
+soswa <- soswa %>% mutate(ts = as_datetime(time / 1000))
+```
+
+# Data Set Information
+
+```{r distance range, warning=FALSE}
+soswa %>% select(ts, distance) %>% summary()
+describe(soswa[,-1], skew = FALSE)
+```
+
+# Plots
+
+## Distance from sun
+
+```{r plots distance sun}
+ggplot(data = soswa, mapping = aes(x = ts, y = distance)) + geom_point(color = 'blue') +
+  labs(title = "Solar Orbiter SWA Trajectory data", x = "Time", y = "Distance from Sun (AU)") +
+  theme_light()
+```
+
+## Potential
+
+```{r plot potential}
+ggplot(data = soswa, mapping = aes(x = ts, y = SCPotential)) + geom_point() +
+  labs(title = "Solar Orbiter SWA RPW Spacecraft Potentail", x = "Time", y = "Spacec (Volts)") +
+  theme_light()
+ggplot(data = soswa, mapping = aes(x = distance, y = SCPotential)) + geom_point() +
+  labs(title = "Solar Orbiter SWA RPW Spacecraft Potentail", x = "Distance (AU)", y = "Spacec (Volts)") +
+  theme_light()
+```
+
