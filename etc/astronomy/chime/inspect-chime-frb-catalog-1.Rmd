@@ -1,0 +1,144 @@
+---
+title: "Investigating CHIME FRB Catalog 1"
+author: "Geirmundur Orri Sigurdsson"
+date: "6/10/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Dependencies
+
+```{r dependencies, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(lubridate)
+library(sphereplot)
+library(data.table)
+library(plotly)
+```
+
+# Download Data
+
+Format information see
+<https://www.chime-frb.ca/analysis>
+
+```{r download data, echo=TRUE, message=FALSE, warning=FALSE, results='hide'}
+cfc1 <- fread("https://storage.googleapis.com/chimefrb-dev.appspot.com/catalog1/chimefrbcat1.csv")
+```
+# Replace fill in value with NA
+
+```{r replace fill with na}
+cfc1 <- na_if(cfc1, -9999)
+```
+
+# Select some repeating FRB
+
+```{r select frb}
+distinct(cfc1, repeater_name)
+frb20180814a <- cfc1 %>% filter(repeater_name == 'FRB20180814A') %>% mutate(date = as.Date(substr(tns_name, 4, 11), format = "%Y%m%d"))
+```
+
+# Plots
+
+## Plot All FRB Flux and Frequency
+
+```{r plot all frb flux and frequency, message=FALSE, warning=FALSE}
+ggplot(data = cfc1, mapping = aes(x = ra, y = dec, color = flux)) +
+  geom_point() + 
+  labs(title = "All FRB Flux", x = "Right ascension", y = "Declination") +
+  theme_light()
+ggplot(data = cfc1, mapping = aes(x = ra, y = dec, color = peak_freq)) +
+  geom_point() +
+  labs(title = "All FRB peak frequency", x = "Right ascension", y = "Declination") +
+  theme_light()
+ggplot(data = cfc1, mapping = aes(x = gl, y = gb, color = flux)) +
+  geom_point() +
+  labs(title = "All FRB Flux", x = "Galactic longitude", y = "Galactic latitude") +
+  theme_light()
+ggplot(data = cfc1, mapping = aes(x = gl, y = gb, color = peak_freq)) +
+  geom_point() +
+  labs(title = "All FRB peak frequency", x = "Galactic longitude", y = "Galactic latitude") +
+  theme_light()
+ggplot(data = cfc1, mapping = aes(x = flux, y = peak_freq)) +
+  geom_point() +
+  labs(title = "All FRB", x = "Flux", y = "Peak frequency") +
+  theme_light()
+```
+
+## Plot All FRB Detection SNR and DM
+
+```{r plot all frb snr and dm, message=FALSE, warning=FALSE}
+ggplot(data = cfc1, mapping = aes(x = ra, y = dec, color = bonsai_snr)) +
+  geom_point() + 
+  labs(title = "All FRB SNR", x = "Right ascension", y = "Declination") +
+  theme_light()
+ggplot(data = cfc1, mapping = aes(x = ra, y = dec, color = bonsai_dm)) +
+  geom_point() +
+  labs(title = "All FRB DM", x = "Right ascension", y = "Declination") +
+  theme_light()
+ggplot(data = cfc1, mapping = aes(x = gl, y = gb, color = bonsai_snr)) +
+  geom_point() +
+  labs(title = "All FRB SNR", x = "Galactic longitude", y = "Galactic latitude") +
+  theme_light()
+ggplot(data = cfc1, mapping = aes(x = gl, y = gb, color = bonsai_dm)) +
+  geom_point() +
+  labs(title = "All FRB DM", x = "Galactic longitude", y = "Galactic latitude") +
+  theme_light()
+ggplot(data = cfc1, mapping = aes(x = bonsai_snr, y = bonsai_dm)) +
+  geom_point() +
+  labs(title = "All FRB", x = "Detection SNR", y = "Detection DM") +
+  theme_light()
+```
+
+## Plot All FRB Fluence
+
+```{r plot all frb fluence, message=FALSE, warning=FALSE}
+ggplot(data = cfc1, mapping = aes(x = ra, y = dec, color = fluence)) +
+  geom_point() + 
+  labs(title = "All FRB fluence", x = "Right ascension", y = "Declination") +
+  theme_light()
+ggplot(data = cfc1, mapping = aes(x = ra, y = dec, color = low_ft_68)) +
+  geom_point() + 
+  labs(title = "All FRB Lower limit fluence threshold (68% confidence)", x = "Right ascension", y = "Declination") +
+  theme_light()
+ggplot(data = cfc1, mapping = aes(x = ra, y = dec, color = low_ft_95)) +
+  geom_point() +
+  labs(title = "All FRB Lower limit fluence threshold (95% confidence)", x = "Right ascension", y = "Declination") +
+  theme_light()
+ggplot(data = cfc1, mapping = aes(x = gl, y = gb, color = fluence)) +
+  geom_point() + 
+  labs(title = "All FRB fluence", x = "Galactic longitude", y = "Galactic latitude") +
+  theme_light()
+ggplot(data = cfc1, mapping = aes(x = gl, y = gb, color = low_ft_68)) +
+  geom_point() +
+  labs(title = "All FRB Lower limit fluence threshold (68% confidence)", x = "Galactic longitude", y = "Galactic latitude") +
+  theme_light()
+ggplot(data = cfc1, mapping = aes(x = gl, y = gb, color = low_ft_95)) +
+  geom_point() +
+  labs(title = "All FRB Lower limit fluence threshold (68% confidence)", x = "Galactic longitude", y = "Galactic latitude") +
+  theme_light()
+ggplot(data = cfc1, mapping = aes(x = low_ft_68, y = low_ft_95)) +
+  geom_point() +
+  labs(title = "All FRB", x = "68%", y = "95%") +
+  theme_light()
+```
+
+## Plot FRB20180814A FRB
+
+```{r plot frb20180814a frb, message=FALSE, warning=FALSE}
+ggplot(data = frb20180814a, mapping = aes(x = date, y = flux)) +
+  geom_point(color = "blue") + 
+  labs(title = "FRB20180814A Flux", x = "Date", y = "Flux") +
+  theme_light()
+melt(frb20180814a %>% select(date, "Low" = low_freq, "High" = high_freq, "Peak" = peak_freq), id = "date") %>% ggplot() +
+  geom_point(aes(x = date, y = value, color = variable)) + 
+  labs(title = "FRB20180814A Frequency", x = "Date", y = "Frequency (MHz)") +
+  theme_light()
+melt(frb20180814a %>% select(date, "Low" = low_ft_68, "Upper" = up_ft_68), id = "date") %>% ggplot() +
+  geom_point(aes(x = date, y = value, color = variable)) + 
+  labs(title = "FRB20180814A fluence threshold (68% confidence)", x = "Date", y = "Jy ms") +
+  theme_light()
+
+```

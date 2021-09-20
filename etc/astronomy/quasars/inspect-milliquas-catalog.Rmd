@@ -1,0 +1,99 @@
+---
+title: "Investigating the Million Quasars Catalog"
+author: "Geirmundur Orri Sigurdsson"
+date: "7/1/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# The Million Quasars Catalog
+
+## Links
+
+* [The Million Quasars Catalog at Quasars](http://quasars.org/milliquas.htm)
+* [The Million Quasars Catalog Readme at Quasars](http://quasars.org/Milliquas-ReadMe.txt)
+* [The Million Quasars Catalog at NASA](https://heasarc.gsfc.nasa.gov/w3browse/all/milliquas.html)
+
+# Dependencies
+
+```{r dependencies, message=FALSE, warning=FALSE}
+library(psych)      # For describe
+library(tidyverse)
+library(lubridate)
+library(sphereplot)
+library(plotly)
+```
+
+# Loading Data
+
+## Million Quasars Catalog
+
+[Format information](http://quasars.org/Milliquas-ReadMe.txt)
+
+```{r loading data, echo=TRUE, message=FALSE, warning=FALSE, results='hide'}
+#rmq_file <- '../../../tmp/quasars/milliquas-sample.txt'
+rmq_file <- '../../../tmp/quasars/milliquas-fixed.txt'
+#rmq_file <- '../../../tmp/quasars/milliquas.txt'
+rmq_widths <- c(12, 13, 26, 4, 6, 6, 5, 2, 2, 7, 7, 7, 4, 23, 23, 23, 23)
+rmw_names <- c('RA', 'DEC', 'Name', 'Type', 'Rmag', 'Bmag', 'Comment', 'R', 'B', 'Z', 'Cite', 'Zcite', 'Qpct', 'Xname', 'Rname', 'Lobe1', 'Lobe2')
+rmq <- read.fwf(rmq_file, header = FALSE, widths=rmq_widths, col.names=rmw_names)
+```
+
+# Trim Text
+
+```{r trim, message=FALSE, warning=FALSE}
+mq <- rmq %>% mutate(
+  Name = trimws(Name),
+  Type = trimws(Type),
+  Comment = trimws(Comment),
+  R = trimws(R),
+  B = trimws(B),
+  Cite = trimws(Cite),
+  Zcite = trimws(Zcite),
+  Xname = trimws(Xname),
+  Rname = trimws(Rname),
+  Lobe1 = trimws(Lobe1),
+  Lobe2 = trimws(Lobe2))
+```
+
+# Describe data
+
+## Describe the Million Quasars
+
+```{r describe, message=FALSE, warning=FALSE}
+describe(mq, skew = FALSE, ranges = FALSE)
+```
+
+# Plots
+
+## Plot Million Quasars
+
+```{r plot mq, message=FALSE, warning=FALSE}
+ggplot(data = mq, mapping = aes(x = RA, y = DEC, color = Z)) +
+  geom_point() + 
+  labs(title = "Redshift of Quasars", x = "Right ascension", y = "Declination") +
+  theme_light()
+ggplot(data = mq, mapping = aes(x = RA, y = DEC, color = Type)) +
+  geom_point() + 
+  labs(title = "Types of Quasars", x = "Right ascension", y = "Declination") +
+  theme_light()
+ggplot(data = mq, mapping = aes(x = RA, y = DEC, color = Rmag)) +
+  geom_point() + 
+  labs(title = "Red optical magnitude of Quasars", x = "Right ascension", y = "Declination") +
+  theme_light()
+ggplot(data = mq, mapping = aes(x = RA, y = DEC, color = R)) +
+  geom_point() + 
+  labs(title = "Red optical PSF class of Quasars", x = "Right ascension", y = "Declination") +
+  theme_light()
+ggplot(data = mq, mapping = aes(x = RA, y = DEC, color = Bmag)) +
+  geom_point() + 
+  labs(title = "Blue optical magnitude of Quasars", x = "Right ascension", y = "Declination") +
+  theme_light()
+ggplot(data = mq, mapping = aes(x = RA, y = DEC, color = B)) +
+  geom_point() + 
+  labs(title = "Blue optical PSF class of Quasars", x = "Right ascension", y = "Declination") +
+  theme_light()
+```

@@ -1,0 +1,117 @@
+---
+title: "Investigating Fermi GBM Burst Catalog"
+author: "Geirmundur Orri Sigurdsson"
+date: "6/15/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Fermi GBM Burst Catalog
+
+## Links
+
+* [FERMIGBRST - Fermi GBM Burst Catalog](https://heasarc.gsfc.nasa.gov/W3Browse/fermi/fermigbrst.html)
+* [Fermi FTP README](https://heasarc.gsfc.nasa.gov/FTP/fermi/README)
+
+## Citations
+
+* [von Kienlin, A. et al. 2020](https://iopscience.iop.org/article/10.3847/1538-4357/ab7a18)
+* [Gruber, D. et al. 2014](http://iopscience.iop.org/0067-0049/211/1/12/)
+* [von Kienlin, A. et al. 2014](http://iopscience.iop.org/0067-0049/211/1/13/)
+* [Bhat, P. et al. 2016](http://iopscience.iop.org/article/10.3847/0067-0049/223/2/28/)
+
+# Dependencies
+
+```{r dependencies, message=FALSE, warning=FALSE}
+library(psych)      # For describe
+library(tidyverse)
+library(lubridate)
+library(sphereplot)
+library(data.table) # For fread
+library(plotly)
+```
+
+# Download Data
+
+## Fermi GBM Burst Catalog
+
+[Format information](http://heasarc.gsfc.nasa.gov/W3Browse/fermi/fermigbrst.html)
+
+```{r download data, echo=TRUE, message=FALSE, warning=FALSE, results='hide'}
+fgbr <- fread("https://heasarc.gsfc.nasa.gov/FTP/fermi/data/tdat/heasarc_fermigbrst.tdat", skip = 367)
+ffgl <- fread("https://heasarc.gsfc.nasa.gov/FTP/fermi/data/tdat/heasarc_fermi2fgl.tdat", skip = 95)
+fgbrhn <- read.csv('../../var/astronomy/heasarc_fermigbrst.csv', header = FALSE)
+ffglhn <- read.csv('../../var/astronomy/heasarc_fermi2fgl.csv', header = FALSE)
+```
+
+# Rename columns
+
+```{r rename}
+fgbr <- fgbr[,1:(length(fgbr) - 1)]
+ffgl <- ffgl[,1:(length(ffgl) - 1)]
+colnames(fgbr) <- fgbrhn$V1
+colnames(ffgl) <- ffglhn$V1
+```
+
+# Describe data
+
+## Describe GBM data
+
+```{r describe gbm, message=FALSE, warning=FALSE}
+describe(fgbr, skew = FALSE, ranges = FALSE)
+```
+
+## Describe FGL data
+
+```{r describe fgl, message=FALSE, warning=FALSE}
+describe(ffgl, skew = FALSE, ranges = FALSE)
+```
+
+# Plots
+
+## Plot All GBM Variables
+
+```{r plot all gbm variables, message=FALSE, warning=FALSE}
+melt(fgbr %>% select(time = trigger_time, "50%" = t50, "90%" = t90), id = "time") %>% ggplot() +
+  geom_point(aes(x = time, y = value, color = variable)) + 
+  labs(title = "GBM Duration", x = "Time", y = "Burst Duration (s)") +
+  theme_light()
+melt(fgbr %>% select(time = trigger_time, "10-1000 keV" = fluence, "50-300 keV" = fluence_batse, "10-1000 keV Peak" = flux_1024), id = "time") %>% ggplot() +
+  geom_point(aes(x = time, y = value, color = variable)) + 
+  scale_y_continuous(trans = 'log10') +
+  labs(title = "GBM Fluence", x = "Time", y = "Fluence") +
+  theme_light()
+```
+
+## Plot All GBM 50% Burst Duration
+
+```{r plot all gbm burst duration, message=FALSE, warning=FALSE}
+ggplot(data = fgbr, mapping = aes(x = ra, y = dec, color = t50)) +
+  geom_point() + 
+  labs(title = "All GBM 50% Burst Duration (s)", x = "Right ascension", y = "Declination") +
+  theme_light()
+```
+
+## Plot All FGL Flux
+
+```{r plot all fgl flux, message=FALSE, warning=FALSE}
+ggplot(data = ffgl, mapping = aes(x = ra, y = dec, color = energy_flux)) +
+  geom_point() + 
+  labs(title = "All FGL energy flux (erg/cm2)", x = "Right ascension", y = "Declination") +
+  theme_light()
+ggplot(data = ffgl, mapping = aes(x = ra, y = dec, color = time_peak)) +
+  geom_point() + 
+  labs(title = "All FGL Time of Center of Interval in Which Peak Flux Was Measured", x = "Right ascension", y = "Declination") +
+  theme_light()
+ggplot(data = ffgl, mapping = aes(x = lii, y = bii, color = energy_flux)) +
+  geom_point() + 
+  labs(title = "All FGL energy flux (erg/cm2)", x = "Galactic longitude", y = "Galactic latitude") +
+  theme_light()
+ggplot(data = ffgl, mapping = aes(x = lii, y = bii, color = time_peak)) +
+  geom_point() + 
+  labs(title = "All FGL Time of Center of Interval in Which Peak Flux Was Measured", x = "Galactic longitude", y = "Galactic latitude") +
+  theme_light()
+```
