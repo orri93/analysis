@@ -10,3 +10,6 @@
 [submodule "extern/hadleyr4ds"]
 	path = extern/hadleyr4ds
 	url = https://github.com/hadley/r4ds.git
+[submodule "extern/genann"]
+	path = extern/genann
+	url = https://github.com/codeplea/genann.git

@@ -1,0 +1,101 @@
+---
+title: "Study in the mathematics of ellipse Notebook"
+author: "Geirmundur Orri Sigurdsson"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Dependencies
+
+```{r dependencies, message=FALSE, warning=FALSE}
+library(ggplot2)
+```
+
+# Function and time
+
+```{r function and time}
+rx <- function(t, a) { a * cos(t) }
+ry <- function(t, b) { b * sin(t) }
+t <- seq(from = -pi, to = pi, by = 2 * pi / 100)
+```
+
+# Inner planets
+
+```{r inner planets}
+mx <- rx(t, 0.466697)
+my <- ry(t, 0.307499)
+mp <- data.frame(t, mx, my)
+mr <- 0.307499 / 0.466697
+
+vx <- rx(t, 0.728213)
+vy <- ry(t, 0.718440)
+vp <- data.frame(t, vx, vy)
+
+ex <- rx(t, 152100000 / 149597870.7)
+ey <- ry(t, 147095000 / 149597870.7)
+ep <- data.frame(t, ex, ey)
+
+ax <- rx(t, 1.666)
+ay <- ry(t, 1.382)
+ap <- data.frame(t, ax, ay)
+
+ggplot() +
+  geom_point(data = mp, mapping = aes(x = mx, y = my), color = 'brown') +
+  geom_point(data = vp, mapping = aes(x = vx, y = vy), color = 'darkorange') +
+  geom_point(data = ep, mapping = aes(x = ex, y = ey), color = 'blue') +
+  geom_point(data = ap, mapping = aes(x = ax, y = ay), color = 'red') +
+  labs(title = "Inner solar system", x = "x (AU)", y = "y (AU)") +
+  coord_fixed() +
+  theme_light()
+```
+
+# With Jupiter and saturn
+
+```{r jupiter and saturn}
+jx <- rx(t, 5.4588)
+jy <- ry(t, 4.9501)
+jp <- data.frame(t, jx, jy)
+
+sx <- rx(t, 10.1238)
+sy <- ry(t, 9.0412)
+sp <- data.frame(t, sx, sy)
+
+ggplot() +
+  geom_point(data = mp, mapping = aes(x = mx, y = my), color = 'brown') +
+  geom_point(data = vp, mapping = aes(x = vx, y = vy), color = 'darkorange') +
+  geom_point(data = ep, mapping = aes(x = ex, y = ey), color = 'blue') +
+  geom_point(data = ap, mapping = aes(x = ax, y = ay), color = 'red') + 
+  geom_point(data = jp, mapping = aes(x = jx, y = jy)) + 
+  geom_point(data = sp, mapping = aes(x = sx, y = sy)) + 
+  coord_fixed() +
+  theme_light()
+```
+
+# With Uranus and Neptune
+
+```{r uranus and neptune}
+ux <- rx(t, 20.11)
+uy <- ry(t, 18.33)
+up <- data.frame(t, ux, uy)
+
+nx <- rx(t, 30.33)
+ny <- ry(t, 29.81)
+np <- data.frame(t, nx, ny)
+
+ggplot() +
+  geom_point(data = mp, mapping = aes(x = mx, y = my), color = 'brown') +
+  geom_point(data = vp, mapping = aes(x = vx, y = vy), color = 'darkorange') +
+  geom_point(data = ep, mapping = aes(x = ex, y = ey), color = 'blue') +
+  geom_point(data = ap, mapping = aes(x = ax, y = ay), color = 'red') + 
+  geom_point(data = jp, mapping = aes(x = jx, y = jy)) + 
+  geom_point(data = sp, mapping = aes(x = sx, y = sy)) + 
+  geom_point(data = up, mapping = aes(x = ux, y = uy)) + 
+  geom_point(data = np, mapping = aes(x = nx, y = ny)) + 
+  coord_fixed() +
+  theme_light()
+```
