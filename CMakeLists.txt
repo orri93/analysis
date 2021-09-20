@@ -50,6 +50,9 @@ if (CLANG_TIDY)
   endif()
 endif (CLANG_TIDY)
 
+set(nn_genann_dir "${CMAKE_CURRENT_SOURCE_DIR}/extern/genann")
+set(nn_genann_src "${nn_genann_dir}/genann.c")
+
 set(fast_cpp_csv_parser_dir
   "${CMAKE_CURRENT_SOURCE_DIR}/extern/fast-cpp-csv-parser")
 

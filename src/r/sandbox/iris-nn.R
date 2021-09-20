@@ -10,7 +10,7 @@ ds <- iris
 # create a list of 80% of the rows in the original dataset we can use for training
 validation_index <- createDataPartition(ds$Species, p=0.80, list=FALSE)
 # select 20% of the data for validation
-validation <- dataset[-validation_index,]
+validation <- ds[-validation_index,]
 # use the remaining 80% of data to training and testing the models
 training <- ds[validation_index,]
 

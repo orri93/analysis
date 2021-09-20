@@ -8,3 +8,5 @@ endif (GOS_ANALYSIS)
 if (GOS_ANALYSIS_CDF)
   add_subdirectory(cdf)
 endif (GOS_ANALYSIS_CDF)
+
+add_subdirectory(nn)
