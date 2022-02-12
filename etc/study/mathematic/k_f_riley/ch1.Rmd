@@ -1,0 +1,63 @@
+---
+title: "Mathematical Methods for Physics and Engineering Notebook"
+author: "Geirmundur Orri Sigurdsson"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This is my notebook for studying of The "Mathematical Methods for Physics and Engineering" third edtion by K. F. Riley, M. P. Hobson and S. J. Bence
+
+# Dependencies
+
+```{r dependencies, message=FALSE, warning=FALSE}
+library(plotly)
+library(ggplot2)
+```
+
+# 1 Preliminary algebra
+
+## 1.8 Exercises
+
+### Polynomial equations
+
+1.1 Continue the investigation of equation 1.7 namely
+
+$$g\left(x\right)=4x^{3}+3x^{2}-6x-1$$
+
+```{r chapter 1 exercise 1.1}
+g <- function(x) {
+  4 * x * x * x + 3 * x * x - 6 * x - 1
+}
+x <- seq(from = -2, to = 2, by = 0.5)
+y <- g(x)
+t <- data.frame(x, y)
+t
+plot(x, y)
+abline(h = 0, v = 0)
+x <- seq(from = -2, to = 2, by = 0.01)
+y <- g(x)
+plot(x, y)
+abline(h = 0, v = 0)
+t <- data.frame(x, y)
+```
+
+1.2 Determine how the number of real roots of the equation
+
+$$g\left(x\right)=4x^{3}-17x^{2}+10x+k=0$$
+
+depends upon k.
+
+```{r chapter 1 exercise 1.2}
+g <- function(x, k) {
+  4 * x * x * x - 17 * x * x + 10 * x + k
+}
+x <- seq(from = -1, to = 4, by = 0.01)
+y <- g(x, 1)
+plot(x, y)
+abline(h = 0, v = 0)
+```
