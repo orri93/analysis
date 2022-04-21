@@ -10,7 +10,7 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-This is my notebook for studying of The "Mathematical Methods for Physics and Engineering" third edtion by K. F. Riley, M. P. Hobson and S. J. Bence
+This is my notebook for studying of The "Mathematical Methods for Physics and Engineering" third edition by K. F. Riley, M. P. Hobson and S. J. Bence
 
 # Dependencies
 
