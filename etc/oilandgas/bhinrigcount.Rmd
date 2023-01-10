@@ -1,0 +1,42 @@
+---
+title: "Baker Huges International Rig Count"
+author: "Geirmundur Orri Sigurdsson"
+date: '2022-10-31'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Dependencies
+
+```{r dependencies, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(lubridate)
+library(reshape2)
+```
+
+# Import
+
+```{r import}
+rawinrc  <- read.csv('../../tmp/oilandgas/bakerhughes/International Rig Counts for Sep 2022.csv')
+```
+
+# Wrangling
+
+```{r wrangling}
+options(dplyr.summarise.inform = FALSE)
+inrc <- rawinrc %>% mutate(Date = ymd(Year * 10000 + Month * 100 + 1)) %>% select(Date, Region, Country, For = DrillFor, Location, RigCount)
+dfrc <- inrc %>% select(Date, For, RigCount) %>% group_by(Date, For) %>% summarise(Count = sum(RigCount)) %>% ungroup()
+lorc <- inrc %>% select(Date, Location, RigCount) %>% group_by(Date, Location) %>% summarise(Count = sum(RigCount))
+```
+
+# Visualisation
+
+```{r visualisation, warning=FALSE}
+ggplot(data = dfrc, mapping = aes(x = Date, y = Count, fill = For)) +
+  geom_area() + theme_light() + ggtitle('Rig Count')
+ggplot(data = lorc, mapping = aes(x = Date, y = Count, fill = Location)) +
+  geom_area() + theme_light() + ggtitle('Rig Count by Location')
+```

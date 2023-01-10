@@ -1,0 +1,79 @@
+---
+title: "Norway Energy"
+author: "Geirmundur Orri Sigurdsson"
+date: '2022-09-20'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Norway Energy
+
+# Dependencies
+
+```{r dependencies, echo=TRUE, message=FALSE, warning=FALSE, results='hide'}
+library(tidyverse)
+library(lubridate)
+library(reshape2)
+library(knitr)
+```
+
+# Reading Data
+
+```{r reading data, warning=FALSE}
+datapath <- '../../tmp/energy/no'
+rawhistorisk <- read.csv2(file.path(datapath, '7359992907750473-Historisk-2018-01-01-2022-09-20.csv'))
+rawar <- read.csv2(file.path(datapath, '7359992907750473-År-2018-01-01-2022-09-20.csv'))
+monthfiles = c('juli 2018', 'august 2018', 'september 2018', 'oktober 2018', 'november 2018', 'desember 2018',
+  'januar 2019', 'februar 2019', 'mars 2019', 'april 2019', 'mai 2019', 'juni 2019', 'juli 2019', 'august 2019', 'september 2019', 'oktober 2019', 'november 2019', 'desember 2019',
+  'januar 2020', 'februar 2020', 'mars 2020', 'april 2020', 'mai 2020', 'juni 2020', 'juli 2020', 'august 2020', 'september 2020', 'oktober 2020', 'november 2020', 'desember 2020',
+  'januar 2021', 'februar 2021', 'mars 2021', 'april 2021', 'mai 2021', 'juni 2021', 'juli 2021', 'august 2021', 'september 2021', 'oktober 2021', 'november 2021', 'desember 2021',
+  'januar 2022', 'februar 2022', 'mars 2022', 'april 2022', 'mai 2022', 'juni 2022', 'juli 2022', 'august 2022', 'september 2022')
+monthraw = read.csv2(file.path(datapath, '7359992907750473-juni 2018.csv'))
+for (file in monthfiles) {
+  filepath <- paste('7359992907750473-', file, '.csv', sep='')
+  monthread <- read.csv2(file.path(datapath, filepath))
+  monthraw <- rbind(monthraw, monthread)
+}
+rm(monthfiles)
+rm(monthread)
+rm(datapath)
+rm(file)
+rm(filepath)
+```
+
+# Data Wrangling
+
+```{r data wrangling, warning=FALSE}
+ar <- rawar %>% mutate(Month = as.yearmon(paste(År, Måned, sep='-')),
+    Usage=as.numeric(Forbruk.i.kWh),
+    Total=as.numeric(Totalkostnad.i.kroner),
+    Cost=as.numeric(Strømkostnad.i.kroner),
+    NetCost=as.numeric(Nettleie.i.kroner),
+    UsagePerDay=as.numeric(Forbruk.per.dag.i.kWh)) %>%
+  select(Month, Usage, Total, Cost, NetCost, UsagePerDay)
+ar <- melt(ar, id=c("Month"))
+month <- monthraw %>% mutate(Date = as_datetime(Dato),
+    Usage=as.numeric(Forbruk.i.kWh),
+    Price=as.numeric(Pris.i.øre.kWh),
+    Cost=as.numeric(Kostnad.i.kroner),
+    Top=as.numeric(Effekttopp.i.kWh)) %>%
+  select(Date, Usage, Price, Cost, Top)
+month <- melt(month, id=c("Date"))
+```
+
+# Plots
+
+```{r plot years, warning=FALSE}
+ggplot(data = ar, mapping = aes(x = Month, y = value, color = variable)) +
+  geom_line() + geom_point() + theme_light() +
+  ggtitle('Monthly')
+```
+
+```{r plot month, warning=FALSE}
+ggplot(data = month, mapping = aes(x = Date, y = value, color = variable)) +
+  geom_line() + geom_point() + theme_light() +
+  ggtitle('Daily')
+```

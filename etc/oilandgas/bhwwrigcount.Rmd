@@ -1,0 +1,82 @@
+---
+title: "Baker Huges Worldwide Rig Count"
+author: "Geirmundur Orri Sigurdsson"
+date: '2022-10-27'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Dependencies
+
+```{r dependencies, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(lubridate)
+library(reshape2)
+library(openxlsx)
+```
+
+# Import
+
+```{r import}
+rawwwrc  <- read.xlsx('../../tmp/oilandgas/bakerhughes/Worldwide Rig Count Sep 2022.xlsx')
+rawbrent <- read.csv('https://datahub.io/core/oil-prices/r/brent-month.csv')
+rawwti   <- read.csv('https://datahub.io/core/oil-prices/r/wti-month.csv')
+```
+
+# Wrangling
+
+```{r wrangling}
+wwrc <- data.frame()
+for (row in 1:nrow(rawwwrc)) {
+  x2 <- rawwwrc[row, "X2"]
+  rawyear <- suppressWarnings(as.numeric(x2))
+  if (is.na(rawyear)) {
+    month <- match(x2, month.abb)
+    if (!is.na(month)) {
+      nextrow <- nrow(wwrc)+1
+      wwrc[nextrow, 'Year'] = year
+      wwrc[nextrow, 'Month'] = month
+      wwrc[nextrow, 'Latin America'] = as.numeric(rawwwrc[row, "X3"])
+      wwrc[nextrow, 'Europe'] = as.numeric(rawwwrc[row, "X4"])
+      wwrc[nextrow, 'Africa'] = as.numeric(rawwwrc[row, "X5"])
+      wwrc[nextrow, 'Middle East'] = as.numeric(rawwwrc[row, "X6"])
+      wwrc[nextrow, 'Asia Pacific'] = as.numeric(rawwwrc[row, "X7"])
+      wwrc[nextrow, 'Canada'] = as.numeric(rawwwrc[row, "X9"])
+      wwrc[nextrow, 'US'] = as.numeric(rawwwrc[row, "X10"])
+      wwrc[nextrow, 'Date'] = ymd(year * 10000 + month * 100 + 1)
+    }
+  } else {
+    year = rawyear
+  }
+}
+eurc <- wwrc %>% select(Date, Count = Europe)
+brent <- rawbrent %>% mutate(Date = as_datetime(paste(substr(Date, 0, 7), '01', sep='-')))
+brent <- rbind(melt(brent, id=c('Date')), melt(eurc, id=c('Date')))
+usrc <- wwrc %>% mutate(Count = US / 10) %>% select(Date, Count)
+wti <- rawwti %>% mutate(Date = as_datetime(paste(substr(Date, 0, 7), '01', sep='-')))
+wti <- rbind(melt(wti, id=c('Date')), melt(usrc, id=c('Date')))
+wwrc <- melt(wwrc, id=c('Date', 'Year', 'Month'))
+wwrc <- wwrc %>% select(Date, Count = value, Area = variable)
+```
+
+# Visualisation
+
+```{r visualisation, warning=FALSE}
+ggplot(data = wwrc, mapping = aes(x = Date, y = Count, fill = Area)) +
+  geom_area() + theme_light() + ggtitle('Rig Count')
+wwrc %>% filter(Area != "US") %>%
+  ggplot(mapping = aes(x = Date, y = Count, fill = Area)) +
+  geom_area() + theme_light() + ggtitle('Rig Count except US')
+wwrc %>% filter(Date > ymd(20100101)) %>%
+  ggplot(mapping = aes(x = Date, y = Count, fill = Area)) +
+  geom_area() + theme_light() + ggtitle('Rig Count 2010 until now')
+brent %>% select(Date, Value = value, Variable = variable) %>%
+  ggplot(mapping = aes(x = Date, y = Value, color = Variable)) +
+  geom_line() + theme_light() + ggtitle('Rig Count Europe and Brent Price')
+wti %>% select(Date, Value = value, Variable = variable) %>%
+  ggplot(mapping = aes(x = Date, y = Value, color = Variable)) +
+  geom_line() + theme_light() + ggtitle('Rig Count US / 10 and WTI Price')
+```

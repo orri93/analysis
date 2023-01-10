@@ -1,0 +1,41 @@
+---
+title: "Baker Huges US Rig Count"
+author: "Geirmundur Orri Sigurdsson"
+date: '2022-10-27'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Dependencies
+
+```{r dependencies, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(lubridate)
+library(reshape2)
+library(readxlsb)
+```
+
+# Import
+
+```{r import}
+rawusbytraj <- read_xlsb('../../tmp/oilandgas/bakerhughes/north_america_rotary_rig_count_jan_2000_-_current.xlsb', sheet=5, skip=5)
+```
+
+# Wrangling
+
+```{r wrangling}
+usbytraj <- rawusbytraj %>% select(DateNumber = Date, DIR., HORZ., VERT.)
+usbytraj <- usbytraj %>% mutate(Date = as.Date(DateNumber, origin = "1899-12-30"))
+usbytraj <- melt(usbytraj, id=c('DateNumber', 'Date'))
+```
+
+# Visualisation
+
+```{r visualisation}
+usbytraj %>% select(Date, Count = value, Type = variable) %>%
+  ggplot(mapping = aes(x = Date, y = Count, fill = Type)) +
+  geom_area() + theme_light()
+```
