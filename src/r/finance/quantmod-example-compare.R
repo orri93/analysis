@@ -1,0 +1,54 @@
+library(quantmod)
+library(tidyverse)
+library(lubridate)
+library(xts)
+
+# Data Range
+edate <- edate <- Sys.Date()
+sdate <- edate - years(5)
+
+# Get Data
+voo_stock=getSymbols('voo',from=sdate,to=edate,auto.assign = F)
+nov_stock=getSymbols('nov',from=sdate,to=edate,auto.assign = F)
+nasdx_stock=getSymbols('nasdx',from=sdate,to=edate,auto.assign = F)
+
+# Typically use previous value for NA
+no.na <- which(is.na(voo_stock[,6]))      # no for NA
+voo_stock[no.na,6] <- voo_stock[no.na-1,6]
+no.na <- which(is.na(nov_stock[,6]))      # no for NA
+nov_stock[no.na,6] <- nov_stock[no.na-1,6]
+no.na <- which(is.na(nasdx_stock[,6]))
+nasdx_stock[no.na,6] <- nasdx_stock[no.na-1,6]
+
+# Only stock price
+voo_price <- voo_stock[,6]
+nov_price <- nov_stock[,6]
+nasdx_price <- nasdx_stock[,6]
+
+voo <- fortify.zoo(voo_price)
+voo <- voo %>% mutate(date=Index, tag='VOO', value=VOO.Adjusted) %>% select(date, tag, value)
+nov <- fortify.zoo(nov_price)
+nov <- nov %>% mutate(date=Index, tag='NOV', value=NOV.Adjusted) %>% select(date, tag, value)
+nasdx <- fortify.zoo(nasdx_price)
+nasdx <- nasdx %>% mutate(date=Index, tag='NASDX', value=NASDX.Adjusted) %>% select(date, tag, value)
+
+# Extract the first value
+voo_first <- voo$value[1]
+nov_first <- nov$value[1]
+nasdx_first <- nasdx$value[1]
+
+# Calculate the progress
+voo <- voo %>% mutate(progress = value - voo_first)
+nov <- nov %>% mutate(progress = value - nov_first)
+nasdx <- nasdx %>% mutate(progress = value - nasdx_first)
+
+# Calculate the progress ratio
+voo <- voo %>% mutate(ratio = progress / voo_first)
+nov <- nov %>% mutate(ratio = progress / nov_first)
+nasdx <- nasdx %>% mutate(ratio = progress / nasdx_first)
+
+prices <- rbind(voo, nov, nasdx)
+
+ggplot(data = prices, mapping = aes(x = date, y = value, color = tag)) + geom_line()
+ggplot(data = prices, mapping = aes(x = date, y = progress, color = tag)) + geom_line()
+ggplot(data = prices, mapping = aes(x = date, y = ratio, color = tag)) + geom_line()
