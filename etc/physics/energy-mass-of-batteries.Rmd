@@ -1,0 +1,35 @@
+---
+title: "Mass of Energy in Batteries"
+author: "Geirmundur Orri Sigurdsson"
+date: '2023-01-17'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Energy mass equivalence of a 9V battery
+
+## Calculations
+
+```{r b9v}
+c <- 299792458
+csquared <- c ^ 2
+energy_per_charge <- 9
+charge <- 1800
+energy <- energy_per_charge * charge
+masskg <- energy / csquared
+massmicrog <- masskg * 1000000000
+```
+
+## Report
+
+A 9V battery delivers `r toString(energy_per_charge)` joules of energy for each coulomb of charge it delivers. Each battery can typically deliver about `r toString(charge)` coulomb of charge before it is drained. The total energy each battery provides over its life is `r toString(energy)` joules.
+
+The mass equivalence for the energy is given by Einstein's Mass–energy equivalence equation
+$$
+m = E / c^2 = \frac{`r toString(energy)` \, J}{(`r toString(c)` \, m/s)^2} = \frac{`r toString(energy)` \, kg \cdot m^2 \cdot s^{-2}}{`r toString(csquared)` \, m^2 \cdot s^{-2}} = `r toString(masskg)` \, kg
+$$
+
+The mass equivalence for the energy of a 9V battery is about `r toString(round(massmicrog, digits = 6))` µg

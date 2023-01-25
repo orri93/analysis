@@ -1,0 +1,152 @@
+---
+title: 'Investment Simulation #2'
+author: "Geirmundur Orri Sigurdsson"
+date: '2023-01-25'
+output: html_document
+params:
+  end_date: now
+  year_count: 4
+  buy_per_year: 12
+  voo_buy_budget: 600
+  qqq_buy_budget: 400
+  amzn_buy_budget: 100
+  goog_buy_budget: 100
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Dependencies
+
+```{r dependencies, message=FALSE, warning=FALSE}
+library(quantmod)
+library(tidyverse)
+library(lubridate)
+library(xts)
+```
+
+# Option
+
+```{r option}
+# Buy count
+buy_count = params$year_count * params$buy_per_year
+
+# Data Range
+edate <- as.Date(params$end_date, optional = TRUE)
+if (is.na(edate)) { edate <- Sys.Date() }
+sdate <- edate - years(params$year_count)
+```
+
+The Investment Simulation simulates `r toString(params$buy_per_year)` investments per year for `r toString(params$year_count)` years between `r toString(sdate)` to `r toString(edate)`
+
+# Fetch Data
+
+```{r fetch}
+voo_stock <- getSymbols('VOO', from=sdate, to=edate, auto.assign=F)
+qqq_stock <- getSymbols('QQQ', from=sdate, to=edate, auto.assign=F)
+amzn_stock <- getSymbols('AMZN', from=sdate, to=edate, auto.assign=F)
+goog_stock <- getSymbols('GOOG', from=sdate, to=edate, auto.assign=F)
+```
+
+# Wrangling
+
+```{r wrangling}
+# Typically use previous value for NA
+no.na <- which(is.na(voo_stock[,6]))
+voo_stock[no.na,6] <- voo_stock[no.na-1,6]
+no.na <- which(is.na(qqq_stock[,6]))
+qqq_stock[no.na,6] <- qqq_stock[no.na-1,6]
+no.na <- which(is.na(amzn_stock[,6]))
+amzn_stock[no.na,6] <- amzn_stock[no.na-1,6]
+no.na <- which(is.na(goog_stock[,6]))
+goog_stock[no.na,6] <- goog_stock[no.na-1,6]
+
+# Only stock price
+voo_price <- voo_stock[,6]
+qqq_price <- qqq_stock[,6]
+amzn_price <- amzn_stock[,6]
+goog_price <- goog_stock[,6]
+
+voo <- fortify.zoo(voo_price)
+voo <- voo %>% mutate(date=Index, tag='VOO', value=VOO.Adjusted) %>% select(date, tag, value)
+qqq <- fortify.zoo(qqq_price)
+qqq <- qqq %>% mutate(date=Index, tag='QQQ', value=QQQ.Adjusted) %>% select(date, tag, value)
+amzn <- fortify.zoo(amzn_price)
+amzn <- amzn %>% mutate(date=Index, tag='AMZN', value=AMZN.Adjusted) %>% select(date, tag, value)
+goog <- fortify.zoo(goog_price)
+goog <- goog %>% mutate(date=Index, tag='GOOG', value=GOOG.Adjusted) %>% select(date, tag, value)
+```
+
+# Checking and Extracting
+
+```{r checking}
+count <- nrow(voo)
+stopifnot(count == nrow(qqq))
+stopifnot(count == nrow(amzn))
+stopifnot(count == nrow(amzn))
+
+buy_space <- count / buy_count
+
+voo_last <- voo$value[nrow(voo)]
+qqq_last <- qqq$value[nrow(qqq)]
+amzn_last <- amzn$value[nrow(amzn)]
+goog_last <- goog$value[nrow(goog)]
+```
+
+# Simulate
+
+```{r simulate}
+index <- 1
+total_buy <- 0
+buy <- data.frame(date=as.Date(character()), tag=character(), price=as.numeric(character()), shares=as.numeric(character()), sell=as.numeric(character()), profit=as.numeric(character()))
+while(index < count) {
+  by <- nrow(buy) + 1
+  buy[by, 1] = voo$date[index]
+  buy[by, 2] = voo$tag[index]
+  buy[by, 3] = voo$value[index]
+  buy[by, 4] = params$voo_buy_budget / voo$value[index]
+  buy[by, 5] = voo_last * params$voo_buy_budget / voo$value[index]
+  buy[by, 6] = (voo_last * params$voo_buy_budget / voo$value[index]) - params$voo_buy_budget
+  total_buy <- total_buy + params$voo_buy_budget
+  by <- nrow(buy) + 1
+  buy[by, 1] = qqq$date[index]
+  buy[by, 2] = qqq$tag[index]
+  buy[by, 3] = qqq$value[index]
+  buy[by, 4] = params$qqq_buy_budget / qqq$value[index]
+  buy[by, 5] = qqq_last * params$qqq_buy_budget / qqq$value[index]
+  buy[by, 6] = (qqq_last * params$qqq_buy_budget / qqq$value[index]) - params$qqq_buy_budget
+  total_buy <- total_buy + params$qqq_buy_budget
+  by <- nrow(buy) + 1
+  buy[by, 1] = amzn$date[index]
+  buy[by, 2] = amzn$tag[index]
+  buy[by, 3] = amzn$value[index]
+  buy[by, 4] = params$amzn_buy_budget / amzn$value[index]
+  buy[by, 5] = amzn_last * params$amzn_buy_budget / amzn$value[index]
+  buy[by, 6] = (amzn_last * params$amzn_buy_budget / amzn$value[index]) - params$amzn_buy_budget
+  total_buy <- total_buy + params$amzn_buy_budget
+  by <- nrow(buy) + 1
+  buy[by, 1] = goog$date[index]
+  buy[by, 2] = goog$tag[index]
+  buy[by, 3] = goog$value[index]
+  buy[by, 4] = params$goog_buy_budget / goog$value[index]
+  buy[by, 5] = goog_last * params$goog_buy_budget / goog$value[index]
+  buy[by, 6] = (goog_last * params$goog_buy_budget / goog$value[index]) - params$goog_buy_budget
+  total_buy <- total_buy + params$goog_buy_budget
+  index <- index + buy_space
+}
+total_profit <- sum(buy$profit)
+total_profit_per_year <- total_profit / params$year_count
+profit_ratio <- total_profit / total_buy
+profit_ratio_per_year <- total_profit_per_year / total_buy
+```
+
+# Visualisation
+
+```{r visualisation, warning=FALSE}
+ggplot(data = buy, mapping = aes(x = date, y = profit, color = tag)) + geom_line()
+```
+
+# Results
+
+Totally invested is $`r toString(total_buy)`. Total profit is $`r toString(round(total_profit, digits = 0))`. Profit ratio is `r toString(round(100*profit_ratio, digits = 2))`%. Profit per year is $`r toString(round(total_profit_per_year, digits = 0))`. Profit per year ratio is `r toString(round(100*profit_ratio_per_year, digits = 2))`%. Amount after selling is $`r toString(total_buy + round(total_profit, digits = 0))`.

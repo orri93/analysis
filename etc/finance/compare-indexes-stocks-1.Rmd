@@ -1,8 +1,10 @@
 ---
-title: "Compare Indexes and Stocks"
+title: "Compare Indexes and Stocks #1"
 author: "Geirmundur Orri Sigurdsson"
 date: '2023-01-12'
 output: html_document
+params:
+  year_count: 1
 ---
 
 ```{r setup, include=FALSE}
@@ -23,7 +25,7 @@ library(xts)
 ```{r option}
 # Data Range
 edate <- edate <- Sys.Date()
-sdate <- edate - years(3)
+sdate <- edate - years(params$year_count)
 ```
 
 # Getting Data

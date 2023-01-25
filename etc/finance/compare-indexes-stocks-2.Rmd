@@ -1,0 +1,99 @@
+---
+title: "Compare Indexes and Stocks #1"
+author: "Geirmundur Orri Sigurdsson"
+date: '2023-01-12'
+output: html_document
+params:
+  end_date: now
+  year_count: 1
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Dependencies
+
+```{r dependencies, message=FALSE, warning=FALSE}
+library(quantmod)
+library(tidyverse)
+library(lubridate)
+library(xts)
+```
+
+# Option
+
+```{r option}
+# Data Range
+edate <- as.Date(params$end_date, optional = TRUE)
+if (is.na(edate)) { edate <- Sys.Date() }
+sdate <- edate - years(params$year_count)
+```
+
+Comparing Stocks for `r toString(params$year_count)` years between `r toString(sdate)` to `r toString(edate)`
+
+# Getting Data
+
+```{r getting}
+voo_stock=getSymbols('VOO',from=sdate,to=edate,auto.assign = F)
+qqq_stock=getSymbols('QQQ',from=sdate,to=edate,auto.assign = F)
+amzn_stock=getSymbols('AMZN',from=sdate,to=edate,auto.assign = F)
+goog_stock=getSymbols('GOOG',from=sdate,to=edate,auto.assign = F)
+```
+
+# Wrangling
+
+```{r wrangling}
+# Typically use previous value for NA
+no.na <- which(is.na(voo_stock[,6]))
+voo_stock[no.na,6] <- voo_stock[no.na-1,6]
+no.na <- which(is.na(qqq_stock[,6]))
+qqq_stock[no.na,6] <- qqq_stock[no.na-1,6]
+no.na <- which(is.na(amzn_stock[,6]))
+amzn_stock[no.na,6] <- amzn_stock[no.na-1,6]
+no.na <- which(is.na(goog_stock[,6]))
+goog_stock[no.na,6] <- goog_stock[no.na-1,6]
+
+# Only stock price
+voo_price <- voo_stock[,6]
+qqq_price <- qqq_stock[,6]
+amzn_price <- amzn_stock[,6]
+goog_price <- goog_stock[,6]
+
+voo <- fortify.zoo(voo_price)
+voo <- voo %>% mutate(date=Index, tag='VOO', value=VOO.Adjusted) %>% select(date, tag, value)
+qqq <- fortify.zoo(qqq_price)
+qqq <- qqq %>% mutate(date=Index, tag='QQQ', value=QQQ.Adjusted) %>% select(date, tag, value)
+amzn <- fortify.zoo(amzn_price)
+amzn <- amzn %>% mutate(date=Index, tag='AMZN', value=AMZN.Adjusted) %>% select(date, tag, value)
+goog <- fortify.zoo(goog_price)
+goog <- goog %>% mutate(date=Index, tag='GOOG', value=GOOG.Adjusted) %>% select(date, tag, value)
+
+# Extract the first value
+voo_first <- voo$value[1]
+qqq_first <- qqq$value[1]
+amzn_first <- amzn$value[1]
+goog_first <- goog$value[1]
+
+# Calculate the progress
+voo <- voo %>% mutate(progress = value - voo_first)
+qqq <- qqq %>% mutate(progress = value - qqq_first)
+amzn <- amzn %>% mutate(progress = value - amzn_first)
+goog <- goog %>% mutate(progress = value - goog_first)
+
+# Calculate the progress ratio
+voo <- voo %>% mutate(ratio = progress / voo_first)
+qqq <- qqq %>% mutate(ratio = progress / qqq_first)
+amzn <- amzn %>% mutate(ratio = progress / amzn_first)
+goog <- goog %>% mutate(ratio = progress / goog_first)
+
+prices <- rbind(voo, qqq, amzn, goog)
+```
+
+# Visualisation
+
+```{r visualisation, warning=FALSE}
+ggplot(data = prices, mapping = aes(x = date, y = value, color = tag)) + geom_line()
+ggplot(data = prices, mapping = aes(x = date, y = progress, color = tag)) + geom_line()
+ggplot(data = prices, mapping = aes(x = date, y = ratio, color = tag)) + geom_line()
+```
