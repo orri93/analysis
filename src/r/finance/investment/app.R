@@ -1,39 +1,22 @@
----
-title: "Investment-1"
-author: "Geirmundur Orri Sigurdsson"
-date: '2023-01-18'
-output: html_document
----
-
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
-
 # Dependencies
-
-```{r dependencies, message=FALSE, warning=FALSE}
+library(shiny)
 library(quantmod)
 library(tidyverse)
 library(lubridate)
 library(googlesheets4)
-library(knitr)
-```
 
-# investment Data Frame
-
-```{r investment}
 # Suspend any previous Google authorization
 gs4_deauth()
+
 # Import from Google Sheets
 raw <- read_sheet('https://docs.google.com/spreadsheets/d/1pMQ1PUSKw4Fd7f21yGokdLx1EuQtn2KAGvaGyrjNU7Q')
+
+# Wrangling
 investment <- raw %>%
   mutate(Date = as_datetime(Date)) %>%
   select(Date, Symbol, Shares, Price)
-```
 
-# Fetch Current Price
-
-```{r fetch}
+# Fetch Current Prices
 price_table <- hashtab()
 voo_quote <- getQuote('VOO')
 qqq_quote <- getQuote('QQQ')
@@ -43,11 +26,8 @@ sethash(price_table, 'VOO', voo_quote$Last)
 sethash(price_table, 'QQQ', qqq_quote$Last)
 sethash(price_table, 'AMZN', amzn_quote$Last)
 sethash(price_table, 'GOOG', goog_quote$Last)
-```
 
 # Calculate
-
-```{r calculate}
 today <- as_datetime(Sys.Date())
 holdings <- investment %>% mutate(Original = Price * Shares)
 for (row in 1:nrow(holdings)) {
@@ -60,19 +40,45 @@ holdings <- holdings %>% mutate(Years = as.numeric(as.duration(Elapsed)) / 31536
 holdings <- holdings %>% mutate(PPY = ifelse(Years > 1.0, Profit / Years, Profit))
 holdings <- holdings %>% mutate(PPYR = PPY / Original)
 total_buy <- sum(holdings$Original)
+total_value <- sum(holdings$Value)
 total_profit <- sum(holdings$Profit)
 profit_ratio <- total_profit / total_buy
 total_ppy <- sum(holdings$PPY)
 ppyr <- total_ppy / total_buy
-rm(row, today)
-```
 
-# Output Table
+# Format for output
+holdings <- holdings %>% mutate(Date = format(Date))
 
-```{r output}
-kable(holdings, caption = 'Holding')
-```
+result <- data.frame(
+  Result = c(
+    "Total Investment",
+    "Total Worth",
+    "Total Profit",
+    "Profit Ratio"),
+  Value = c(
+    total_buy,
+    total_value,
+    total_profit,
+    profit_ratio * 100.0),
+  Unit = c(
+    "USD",
+    "USD",
+    "USD",
+    "%"))
 
-# Results
+ui <- fluidPage(
+  tags$h1("Investments"),
+  tableOutput('table'),
+  tableOutput('result')
+)
 
-Totally invested is $`r toString(total_buy)`. Total profit is $`r toString(round(total_profit, digits = 0))`. Profit ratio is `r toString(round(100*profit_ratio, digits = 2))`%. Profit per year is $`r toString(round(total_ppy, digits = 0))`. Profit per year ratio is `r toString(round(100*ppyr, digits = 2))`%. Amount after selling is $`r toString(total_buy + round(total_profit, digits = 0))`.
+server <- function(input, output) {
+  output$table <- renderTable({
+    holdings
+  })
+  output$result <- renderTable({
+    result
+  })
+}
+
+shinyApp(ui, server)

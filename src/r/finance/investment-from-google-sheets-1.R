@@ -19,8 +19,12 @@ investment <- raw %>%
 price_table <- hashtab()
 voo_quote <- getQuote('VOO')
 qqq_quote <- getQuote('QQQ')
+amzn_quote <- getQuote('AMZN')
+goog_quote <- getQuote('GOOG')
 sethash(price_table, 'VOO', voo_quote$Last)
 sethash(price_table, 'QQQ', qqq_quote$Last)
+sethash(price_table, 'AMZN', amzn_quote$Last)
+sethash(price_table, 'GOOG', goog_quote$Last)
 
 # Calculate
 today <- as_datetime(Sys.Date())
