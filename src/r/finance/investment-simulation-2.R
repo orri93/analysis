@@ -83,5 +83,3 @@ simulate <- function(simdf, year_count, until, ipy) {
 }
 
 result <- simulate(simulation, year_count, to, investment_per_year)
-
-
