@@ -86,13 +86,13 @@ result <- data.frame(
 # Output Holding Table
 
 ```{r output holding table}
-kable(holdings, caption = 'Holding')
+kable(holdings, caption = 'Holding', digits = 2)
 ```
 
 # Results
 
 ```{r output result table}
-kable(result, caption = 'Result')
+kable(result, caption = 'Result', digits = 2)
 ```
 
 Totally invested is $`r toString(total_inv)`. Total profit is $`r toString(round(total_profit, digits = 0))`. Profit ratio is `r toString(round(100*profit_ratio, digits = 2))`%. Profit per year is $`r toString(round(total_ppy, digits = 0))`. Profit per year ratio is `r toString(round(100*ppyr, digits = 2))`%. Amount after selling is $`r toString(total_inv + round(total_profit, digits = 0))`.
