@@ -18,33 +18,31 @@ investment <- raw %>%
 
 # Fetch Current Prices
 price_table <- hashtab()
-voo_quote <- getQuote('VOO')
-qqq_quote <- getQuote('QQQ')
-amzn_quote <- getQuote('AMZN')
-goog_quote <- getQuote('GOOG')
-sethash(price_table, 'VOO', voo_quote$Last)
-sethash(price_table, 'QQQ', qqq_quote$Last)
-sethash(price_table, 'AMZN', amzn_quote$Last)
-sethash(price_table, 'GOOG', goog_quote$Last)
+for (row in 1:nrow(investment)) {
+  symbol <- investment$Symbol[row]
+  quote <- getQuote(symbol)
+  sethash(price_table, symbol, quote$Last)
+}
 
 # Calculate
 today <- as_datetime(Sys.Date())
-holdings <- investment %>% mutate(Original = Price * Shares)
+holdings <- investment %>% mutate(Investment = Price * Shares)
 for (row in 1:nrow(holdings)) {
-  holdings[row, 'Current'] = price_table[[holdings$Symbol[row]]]
+  holdings[row, 'Last'] = price_table[[holdings$Symbol[row]]]
 }
-holdings <- holdings %>% mutate(Value = Current * Shares)
-holdings <- holdings %>% mutate(Profit = Value - Original)
-holdings <- holdings %>% mutate(Ratio = Profit / Original, Elapsed = today - Date)
+holdings <- holdings %>% mutate(Worth = Last * Shares)
+holdings <- holdings %>% mutate(Profit = Worth - Investment)
+holdings <- holdings %>% mutate(Ratio = Profit / Investment, Elapsed = today - Date)
 holdings <- holdings %>% mutate(Years = as.numeric(as.duration(Elapsed)) / 31536000)
 holdings <- holdings %>% mutate(PPY = ifelse(Years > 1.0, Profit / Years, Profit))
-holdings <- holdings %>% mutate(PPYR = PPY / Original)
-total_buy <- sum(holdings$Original)
-total_value <- sum(holdings$Value)
+holdings <- holdings %>% mutate(PPYR = PPY / Investment)
+total_inv <- sum(holdings$Investment)
+total_worth <- sum(holdings$Worth)
 total_profit <- sum(holdings$Profit)
-profit_ratio <- total_profit / total_buy
+profit_ratio <- total_profit / total_inv
 total_ppy <- sum(holdings$PPY)
-ppyr <- total_ppy / total_buy
+ppyr <- total_ppy / total_inv
+holdings <- holdings %>% mutate(IR = Investment / total_inv, WR = Worth / total_worth)
 
 # Format for output
 holdings <- holdings %>% mutate(Date = format(Date))
@@ -56,8 +54,8 @@ result <- data.frame(
     "Total Profit",
     "Profit Ratio"),
   Value = c(
-    total_buy,
-    total_value,
+    total_inv,
+    total_worth,
     total_profit,
     profit_ratio * 100.0),
   Unit = c(

@@ -3,16 +3,22 @@ library(quantmod)
 library(tidyverse)
 library(lubridate)
 
+amount <- 2400
+invstrinp <- data.frame(
+  Symbol = c("VOO", "VTI", "VXUS", "BND", "QQQ"),
+  Ratio = c(0.22, 0.22, 0.16, 0.2, 0.2))
+
+ratio_sum_check = sum(invstrinp$Ratio)
+
+invstr <- invstrinp %>% mutate(Amount = amount * Ratio)
 # Fetch Current Prices
-price_table <- hashtab()
-voo_quote <- getQuote('VOO')
-vti_quote <- getQuote('VTI')
-vxus_quote <- getQuote('VXUS')
-bnd_quote <- getQuote('BND')
-qqq_quote <- getQuote('QQQ')
-amzn_quote <- getQuote('AMZN')
-goog_quote <- getQuote('GOOG')
-sethash(price_table, 'VOO', voo_quote$Last)
-sethash(price_table, 'QQQ', qqq_quote$Last)
-sethash(price_table, 'AMZN', amzn_quote$Last)
-sethash(price_table, 'GOOG', goog_quote$Last)
+for (row in 1:nrow(invstr)) {
+  quote <- getQuote(invstr$Symbol[row])
+  invstr[row, 'Last'] = quote$Last
+}
+rm(row, quote)
+invstr <- invstr %>% mutate(Stock = floor(Amount / Last))
+invstr <- invstr %>% mutate(Spend = Stock * Last)
+total_spend <- sum(invstr$Spend)
+spend_diff <- amount - total_spend
+invstr <- invstr %>% mutate(SR = round(Spend / total_spend, 2))
