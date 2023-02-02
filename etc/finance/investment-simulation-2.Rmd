@@ -144,7 +144,7 @@ profit_ratio_per_year <- total_profit_per_year / total_buy
 # Visualisation
 
 ```{r visualisation, warning=FALSE}
-ggplot(data = buy, mapping = aes(x = date, y = profit, color = tag)) + geom_line()
+ggplot(data = buy, mapping = aes(x = date, y = profit, color = tag)) + geom_line() + theme_light()
 ```
 
 # Results

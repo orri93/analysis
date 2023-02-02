@@ -67,7 +67,10 @@ result <- data.frame(
 ui <- fluidPage(
   tags$h1("Investments"),
   tableOutput('table'),
-  tableOutput('result')
+  tableOutput('result'),
+  plotOutput("plotinv"),
+  plotOutput("plotworth"),
+  plotOutput("plotprofit")
 )
 
 server <- function(input, output) {
@@ -76,6 +79,15 @@ server <- function(input, output) {
   })
   output$result <- renderTable({
     result
+  })
+  output$plotinv <- renderPlot({
+    ggplot(data = holdings, mapping = aes(x = Date, y = Investment, fill = Symbol)) + geom_bar(stat = "identity") + theme_light()
+  })
+  output$plotworth <- renderPlot({
+    ggplot(data = holdings, mapping = aes(x = Date, y = Worth, fill = Symbol)) + geom_bar(stat = "identity") + theme_light()
+  })
+  output$plotprofit <- renderPlot({
+    ggplot(data = holdings, mapping = aes(x = Date, y = Profit, fill = Symbol)) + geom_bar(stat = "identity") + theme_light()
   })
 }
 

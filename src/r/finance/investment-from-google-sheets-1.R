@@ -43,3 +43,8 @@ total_ppy <- sum(holdings$PPY)
 ppyr <- total_ppy / total_inv
 holdings <- holdings %>% mutate(IR = Investment / total_inv, WR = Worth / total_worth)
 rm(row)
+
+# Plotting
+ggplot(data = holdings, mapping = aes(x = Date, y = Investment, fill = Symbol)) + geom_bar(stat = "identity") + theme_light()
+ggplot(data = holdings, mapping = aes(x = Date, y = Worth, fill = Symbol)) + geom_bar(stat = "identity") + theme_light()
+ggplot(data = holdings, mapping = aes(x = Date, y = Profit, fill = Symbol)) + geom_bar(stat = "identity") + theme_light()

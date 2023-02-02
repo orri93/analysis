@@ -89,6 +89,14 @@ result <- data.frame(
 kable(holdings, caption = 'Holding', digits = 2)
 ```
 
+# Visualisation
+
+```{r visualisation, warning=FALSE}
+ggplot(data = holdings, mapping = aes(x = Date, y = Investment, fill = Symbol)) + geom_bar(stat = "identity") + theme_light()
+ggplot(data = holdings, mapping = aes(x = Date, y = Worth, fill = Symbol)) + geom_bar(stat = "identity") + theme_light()
+ggplot(data = holdings, mapping = aes(x = Date, y = Profit, fill = Symbol)) + geom_bar(stat = "identity") + theme_light()
+```
+
 # Results
 
 ```{r output result table}
