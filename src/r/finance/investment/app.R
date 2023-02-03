@@ -44,6 +44,23 @@ total_ppy <- sum(holdings$PPY)
 ppyr <- total_ppy / total_inv
 holdings <- holdings %>% mutate(IR = Investment / total_inv, WR = Worth / total_worth)
 
+# Summarize
+summary <- data.frame(Symbol=character())
+maphash(price_table, function(k, v) {
+  n <- nrow(summary) + 1
+  summary[n, 1] <<- k
+})
+for (row in 1:nrow(summary)) {
+  symbol <- summary$Symbol[row]
+  fh <- holdings %>% filter(Symbol == symbol)
+  summary$Shares[row] <- sum(fh$Shares)
+  summary$Investment[row] <- sum(fh$Investment)
+  summary$Last[row] <- price_table[[symbol]]
+  summary$Worth[row] <- sum(fh$Worth)
+  summary$Profit[row] <- sum(fh$Profit)
+}
+summary <- summary %>% mutate(Ratio = Profit / Investment, IR = Investment / total_inv, WR = Worth / total_worth)
+
 # Format for output
 holdings <- holdings %>% mutate(Date = format(Date))
 
@@ -67,6 +84,9 @@ result <- data.frame(
 ui <- fluidPage(
   tags$h1("Investments"),
   tableOutput('table'),
+  tags$h2("Summary"),
+  tableOutput('summary'),
+  tags$h2("Result"),
   tableOutput('result'),
   plotOutput("plotinv"),
   plotOutput("plotworth"),
@@ -76,6 +96,9 @@ ui <- fluidPage(
 server <- function(input, output) {
   output$table <- renderTable({
     holdings
+  })
+  output$summary <- renderTable({
+    summary
   })
   output$result <- renderTable({
     result

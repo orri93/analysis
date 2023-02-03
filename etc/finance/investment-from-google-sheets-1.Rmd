@@ -89,6 +89,32 @@ result <- data.frame(
 kable(holdings, caption = 'Holding', digits = 2)
 ```
 
+# Summarize
+
+```{r summarize}
+summary <- data.frame(Symbol=character())
+maphash(price_table, function(k, v) {
+  n <- nrow(summary) + 1
+  summary[n, 1] <<- k
+})
+for (row in 1:nrow(summary)) {
+  symbol <- summary$Symbol[row]
+  fh <- holdings %>% filter(Symbol == symbol)
+  summary$Shares[row] <- sum(fh$Shares)
+  summary$Investment[row] <- sum(fh$Investment)
+  summary$Last[row] <- price_table[[symbol]]
+  summary$Worth[row] <- sum(fh$Worth)
+  summary$Profit[row] <- sum(fh$Profit)
+}
+summary <- summary %>% mutate(Ratio = Profit / Investment, IR = Investment / total_inv, WR = Worth / total_worth)
+```
+
+# Output Summary Table
+
+```{r output summary table}
+kable(summary, caption = 'Summary', digits = 2)
+```
+
 # Visualisation
 
 ```{r visualisation, warning=FALSE}

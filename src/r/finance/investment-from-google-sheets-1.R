@@ -22,6 +22,7 @@ for (row in 1:nrow(investment)) {
   quote <- getQuote(symbol)
   sethash(price_table, symbol, quote$Last)
 }
+rm(symbol, quote)
 
 # Calculate
 today <- as_datetime(Sys.Date())
@@ -43,6 +44,24 @@ total_ppy <- sum(holdings$PPY)
 ppyr <- total_ppy / total_inv
 holdings <- holdings %>% mutate(IR = Investment / total_inv, WR = Worth / total_worth)
 rm(row)
+
+# Summarize
+summary <- data.frame(Symbol=character())
+maphash(price_table, function(k, v) {
+  n <- nrow(summary) + 1
+  summary[n, 1] <<- k
+})
+for (row in 1:nrow(summary)) {
+  symbol <- summary$Symbol[row]
+  fh <- holdings %>% filter(Symbol == symbol)
+  summary$Shares[row] <- sum(fh$Shares)
+  summary$Investment[row] <- sum(fh$Investment)
+  summary$Last[row] <- price_table[[symbol]]
+  summary$Worth[row] <- sum(fh$Worth)
+  summary$Profit[row] <- sum(fh$Profit)
+}
+summary <- summary %>% mutate(Ratio = Profit / Investment, IR = Investment / total_inv, WR = Worth / total_worth)
+rm(row, symbol, fh)
 
 # Plotting
 ggplot(data = holdings, mapping = aes(x = Date, y = Investment, fill = Symbol)) + geom_bar(stat = "identity") + theme_light()
