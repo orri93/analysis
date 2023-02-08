@@ -60,6 +60,7 @@ for (row in 1:nrow(summary)) {
   summary$Profit[row] <- sum(fh$Profit)
 }
 summary <- summary %>% mutate(Ratio = Profit / Investment, IR = Investment / total_inv, WR = Worth / total_worth)
+summary <- arrange(summary, Symbol) # Order
 
 # Format for output
 holdings <- holdings %>% mutate(Date = format(Date))
