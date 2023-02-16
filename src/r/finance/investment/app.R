@@ -89,6 +89,7 @@ ui <- fluidPage(
   tableOutput('summary'),
   tags$h2("Result"),
   tableOutput('result'),
+  tags$h2("Visualization"),
   plotOutput("plotinv"),
   plotOutput("plotworth"),
   plotOutput("plotprofit")
