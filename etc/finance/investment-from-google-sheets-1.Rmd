@@ -26,6 +26,7 @@ library(knitr)
 gs4_deauth()
 # Import from Google Sheets
 raw <- read_sheet('https://docs.google.com/spreadsheets/d/1pMQ1PUSKw4Fd7f21yGokdLx1EuQtn2KAGvaGyrjNU7Q')
+info <- read_sheet('https://docs.google.com/spreadsheets/d/1pMQ1PUSKw4Fd7f21yGokdLx1EuQtn2KAGvaGyrjNU7Q', range="Information")
 investment <- raw %>%
   mutate(Date = as_datetime(Date)) %>%
   select(Date, Symbol, Shares, Price)
@@ -100,6 +101,9 @@ maphash(price_table, function(k, v) {
 for (row in 1:nrow(summary)) {
   symbol <- summary$Symbol[row]
   fh <- holdings %>% filter(Symbol == symbol)
+  infoline <- filter(info, Symbol == symbol)
+  summary$Name[row] <- infoline$Name
+  summary$Type[row] <- infoline$Type
   summary$Shares[row] <- sum(fh$Shares)
   summary$Investment[row] <- sum(fh$Investment)
   summary$Last[row] <- price_table[[symbol]]
@@ -118,10 +122,36 @@ kable(summary, caption = 'Summary', digits = 2)
 
 # Visualisation
 
-```{r visualisation, warning=FALSE}
-ggplot(data = holdings, mapping = aes(x = Date, y = Investment, fill = Symbol)) + geom_bar(stat = "identity") + theme_light()
-ggplot(data = holdings, mapping = aes(x = Date, y = Worth, fill = Symbol)) + geom_bar(stat = "identity") + theme_light()
-ggplot(data = holdings, mapping = aes(x = Date, y = Profit, fill = Symbol)) + geom_bar(stat = "identity") + theme_light()
+## Holdings
+
+```{r visualisation holdings, warning=FALSE}
+ggplot(data = holdings, mapping = aes(x = Date, y = Investment, fill = Symbol)) +
+  geom_bar(stat = "identity") + ggtitle("Holding Investment") + scale_y_continuous(label=scales::dollar_format()) + theme_light()
+ggplot(data = holdings, mapping = aes(x = Date, y = Worth, fill = Symbol)) +
+  geom_bar(stat = "identity") + ggtitle("Holding Worth") + scale_y_continuous(label=scales::dollar_format()) + theme_light()
+ggplot(data = holdings, mapping = aes(x = Date, y = Profit, fill = Symbol)) +
+  geom_bar(stat = "identity") + ggtitle("Holding Profit") + scale_y_continuous(label=scales::dollar_format()) + theme_light()
+```
+
+## Summary
+
+```{r visualisation summary, warning=FALSE}
+ggplot(data = summary, mapping = aes(x = Symbol, y = Profit)) +
+  geom_bar(stat='identity') + ggtitle("Summary Profit") + scale_y_continuous(label=scales::dollar_format()) + theme_light()
+ggplot(data = summary, mapping = aes(x = Symbol, y = Ratio)) +
+  geom_bar(stat='identity') + ggtitle("Summary Profit Ratio") + scale_y_continuous(label=scales::percent_format(accuracy=2)) + theme_light()
+```
+
+## Investment
+
+```{r investment pie chart}
+pie(summary$Investment, summary$Symbol)
+```
+
+## Worth
+
+```{r worth pie chart}
+pie(summary$Worth, summary$Symbol)
 ```
 
 # Results

@@ -9,6 +9,7 @@ gs4_deauth()
 
 # Import from Google Sheets
 raw <- read_sheet('https://docs.google.com/spreadsheets/d/1pMQ1PUSKw4Fd7f21yGokdLx1EuQtn2KAGvaGyrjNU7Q')
+info <- read_sheet('https://docs.google.com/spreadsheets/d/1pMQ1PUSKw4Fd7f21yGokdLx1EuQtn2KAGvaGyrjNU7Q', range="Information")
 
 # Wrangling
 investment <- raw %>%
@@ -54,6 +55,9 @@ maphash(price_table, function(k, v) {
 for (row in 1:nrow(summary)) {
   symbol <- summary$Symbol[row]
   fh <- holdings %>% filter(Symbol == symbol)
+  infoline <- filter(info, Symbol == symbol)
+  summary$Name[row] <- infoline$Name
+  summary$Type[row] <- infoline$Type
   summary$Shares[row] <- sum(fh$Shares)
   summary$Investment[row] <- sum(fh$Investment)
   summary$Last[row] <- price_table[[symbol]]
@@ -62,7 +66,7 @@ for (row in 1:nrow(summary)) {
 }
 summary <- summary %>% mutate(Ratio = Profit / Investment, IR = Investment / total_inv, WR = Worth / total_worth)
 summary <- arrange(summary, Symbol) # Order
-rm(row, symbol, fh)
+rm(row, symbol, fh, infoline)
 
 # Plotting
 ggplot(data = holdings, mapping = aes(x = Date, y = Investment, fill = Symbol)) + geom_bar(stat = "identity") + theme_light()

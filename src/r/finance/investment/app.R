@@ -10,6 +10,7 @@ gs4_deauth()
 
 # Import from Google Sheets
 raw <- read_sheet('https://docs.google.com/spreadsheets/d/1pMQ1PUSKw4Fd7f21yGokdLx1EuQtn2KAGvaGyrjNU7Q')
+info <- read_sheet('https://docs.google.com/spreadsheets/d/1pMQ1PUSKw4Fd7f21yGokdLx1EuQtn2KAGvaGyrjNU7Q', range="Information")
 
 # Wrangling
 investment <- raw %>%
@@ -53,6 +54,9 @@ maphash(price_table, function(k, v) {
 for (row in 1:nrow(summary)) {
   symbol <- summary$Symbol[row]
   fh <- holdings %>% filter(Symbol == symbol)
+  infoline <- filter(info, Symbol == symbol)
+  summary$Name[row] <- infoline$Name
+  summary$Type[row] <- infoline$Type
   summary$Shares[row] <- sum(fh$Shares)
   summary$Investment[row] <- sum(fh$Investment)
   summary$Last[row] <- price_table[[symbol]]
@@ -90,9 +94,17 @@ ui <- fluidPage(
   tags$h2("Result"),
   tableOutput('result'),
   tags$h2("Visualization"),
+  tags$h3("Holdings"),
   plotOutput("plotinv"),
   plotOutput("plotworth"),
-  plotOutput("plotprofit")
+  plotOutput("plotprofit"),
+  tags$h3("Summary"),
+  plotOutput("plotsumprofit"),
+  plotOutput("plotsumratio"),
+  tags$h3("Investment"),
+  plotOutput("plotpieinv"),
+  tags$h3("Worth"),
+  plotOutput("plotpieworth")
 )
 
 server <- function(input, output) {
@@ -106,13 +118,30 @@ server <- function(input, output) {
     result
   })
   output$plotinv <- renderPlot({
-    ggplot(data = holdings, mapping = aes(x = Date, y = Investment, fill = Symbol)) + geom_bar(stat = "identity") + theme_light()
+    ggplot(data = holdings, mapping = aes(x = Date, y = Investment, fill = Symbol)) +
+      geom_bar(stat = "identity") + ggtitle("Holding Investment") + scale_y_continuous(label=scales::dollar_format()) + theme_light()
   })
   output$plotworth <- renderPlot({
-    ggplot(data = holdings, mapping = aes(x = Date, y = Worth, fill = Symbol)) + geom_bar(stat = "identity") + theme_light()
+    ggplot(data = holdings, mapping = aes(x = Date, y = Worth, fill = Symbol)) +
+      geom_bar(stat = "identity") + ggtitle("Holding Worth") + scale_y_continuous(label=scales::dollar_format()) + theme_light()
   })
   output$plotprofit <- renderPlot({
-    ggplot(data = holdings, mapping = aes(x = Date, y = Profit, fill = Symbol)) + geom_bar(stat = "identity") + theme_light()
+    ggplot(data = holdings, mapping = aes(x = Date, y = Profit, fill = Symbol)) +
+      geom_bar(stat = "identity") + ggtitle("Holding Profit") + scale_y_continuous(label=scales::dollar_format()) + theme_light()
+  })
+  output$plotsumprofit <- renderPlot({
+    ggplot(data = summary, mapping = aes(x = Symbol, y = Profit)) +
+      geom_bar(stat='identity') + ggtitle("Summary Profit") + scale_y_continuous(label=scales::dollar_format()) + theme_light()
+  })
+  output$plotsumratio <- renderPlot({
+    ggplot(data = summary, mapping = aes(x = Symbol, y = Ratio)) +
+      geom_bar(stat='identity') + ggtitle("Summary Profit Ratio") + scale_y_continuous(label=scales::percent_format(accuracy=2)) + theme_light()
+  })
+  output$plotpieinv <- renderPlot({
+    pie(summary$Investment, summary$Symbol)
+  })
+  output$plotpieworth <- renderPlot({
+    pie(summary$Worth, summary$Symbol)
   })
 }
 
