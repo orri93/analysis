@@ -51,12 +51,15 @@ maphash(price_table, function(k, v) {
   n <- nrow(summary) + 1
   summary[n, 1] <<- k
 })
+type_table <- hashtab()
 for (row in 1:nrow(summary)) {
   symbol <- summary$Symbol[row]
   fh <- holdings %>% filter(Symbol == symbol)
   infoline <- filter(info, Symbol == symbol)
+  type <- infoline$Type
+  sethash(type_table, type, infoline)
   summary$Name[row] <- infoline$Name
-  summary$Type[row] <- infoline$Type
+  summary$Type[row] <- type
   summary$Shares[row] <- sum(fh$Shares)
   summary$Investment[row] <- sum(fh$Investment)
   summary$Last[row] <- price_table[[symbol]]
@@ -65,6 +68,20 @@ for (row in 1:nrow(summary)) {
 }
 summary <- summary %>% mutate(Ratio = Profit / Investment, IR = Investment / total_inv, WR = Worth / total_worth)
 summary <- arrange(summary, Symbol) # Order
+types <- data.frame(Type=character())
+maphash(type_table, function(k, v) {
+  n <- nrow(types) + 1
+  types[n, 1] <<- k
+})
+for (row in 1:nrow(types)) {
+  type <- types$Type[row]
+  fs <- summary %>% filter(Type == type)
+  types$Investment[row] <- sum(fs$Investment)
+  types$Worth[row] <- sum(fs$Worth)
+  types$Profit[row] <- sum(fs$Profit)
+}
+types <- types %>% mutate(Ratio = Profit / Investment, IR = Investment / total_inv, WR = Worth / total_worth)
+types <- arrange(types, Type) # Order
 
 # Format for output
 holdings <- holdings %>% mutate(Date = format(Date))
@@ -91,6 +108,8 @@ ui <- fluidPage(
   tableOutput('table'),
   tags$h2("Summary"),
   tableOutput('summary'),
+  tags$h2("Type Summary"),
+  tableOutput('typesummary'),
   tags$h2("Result"),
   tableOutput('result'),
   tags$h2("Visualization"),
@@ -101,10 +120,16 @@ ui <- fluidPage(
   tags$h3("Summary"),
   plotOutput("plotsumprofit"),
   plotOutput("plotsumratio"),
+  plotOutput("plottypessumprofit"),
+  plotOutput("plottypessumratio"),
   tags$h3("Investment"),
   plotOutput("plotpieinv"),
   tags$h3("Worth"),
-  plotOutput("plotpieworth")
+  plotOutput("plotpieworth"),
+  tags$h3("Types Investment"),
+  plotOutput("plottypespieinv"),
+  tags$h3("Types Worth"),
+  plotOutput("plottypespieworth")
 )
 
 server <- function(input, output) {
@@ -113,6 +138,9 @@ server <- function(input, output) {
   })
   output$summary <- renderTable({
     summary
+  })
+  output$typesummary <- renderTable({
+    types
   })
   output$result <- renderTable({
     result
@@ -135,13 +163,27 @@ server <- function(input, output) {
   })
   output$plotsumratio <- renderPlot({
     ggplot(data = summary, mapping = aes(x = Symbol, y = Ratio)) +
-      geom_bar(stat='identity') + ggtitle("Summary Profit Ratio") + scale_y_continuous(label=scales::percent_format(accuracy=2)) + theme_light()
+      geom_bar(stat='identity') + ggtitle("Summary Profit Ratio") + scale_y_continuous(label=scales::percent_format(accuracy=0.1)) + theme_light()
+  })
+  output$plottypessumprofit <- renderPlot({
+    ggplot(data = types, mapping = aes(x = Type, y = Profit)) +
+      geom_bar(stat='identity') + ggtitle("Types Summary Profit") + scale_y_continuous(label=scales::dollar_format()) + theme_light()
+  })
+  output$plottypessumratio <- renderPlot({
+    ggplot(data = types, mapping = aes(x = Type, y = Ratio)) +
+      geom_bar(stat='identity') + ggtitle("Summary Profit Ratio") + scale_y_continuous(label=scales::percent_format(accuracy=0.1)) + theme_light()
   })
   output$plotpieinv <- renderPlot({
     pie(summary$Investment, summary$Symbol)
   })
   output$plotpieworth <- renderPlot({
     pie(summary$Worth, summary$Symbol)
+  })
+  output$plottypespieinv <- renderPlot({
+    pie(types$Investment, types$Type)
+  })
+  output$plottypespieworth <- renderPlot({
+    pie(types$Worth, types$Type)
   })
 }
 

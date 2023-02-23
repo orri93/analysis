@@ -52,12 +52,15 @@ maphash(price_table, function(k, v) {
   n <- nrow(summary) + 1
   summary[n, 1] <<- k
 })
+type_table <- hashtab()
 for (row in 1:nrow(summary)) {
   symbol <- summary$Symbol[row]
   fh <- holdings %>% filter(Symbol == symbol)
   infoline <- filter(info, Symbol == symbol)
+  type <- infoline$Type
+  sethash(type_table, type, infoline)
   summary$Name[row] <- infoline$Name
-  summary$Type[row] <- infoline$Type
+  summary$Type[row] <- type
   summary$Shares[row] <- sum(fh$Shares)
   summary$Investment[row] <- sum(fh$Investment)
   summary$Last[row] <- price_table[[symbol]]
@@ -66,7 +69,21 @@ for (row in 1:nrow(summary)) {
 }
 summary <- summary %>% mutate(Ratio = Profit / Investment, IR = Investment / total_inv, WR = Worth / total_worth)
 summary <- arrange(summary, Symbol) # Order
-rm(row, symbol, fh, infoline)
+types <- data.frame(Type=character())
+maphash(type_table, function(k, v) {
+  n <- nrow(types) + 1
+  types[n, 1] <<- k
+})
+for (row in 1:nrow(types)) {
+  type <- types$Type[row]
+  fs <- summary %>% filter(Type == type)
+  types$Investment[row] <- sum(fs$Investment)
+  types$Worth[row] <- sum(fs$Worth)
+  types$Profit[row] <- sum(fs$Profit)
+}
+types <- types %>% mutate(Ratio = Profit / Investment, IR = Investment / total_inv, WR = Worth / total_worth)
+types <- arrange(types, Type) # Order
+rm(row, symbol, fh, infoline, type, fs)
 
 # Plotting
 ggplot(data = holdings, mapping = aes(x = Date, y = Investment, fill = Symbol)) + geom_bar(stat = "identity") + theme_light()
