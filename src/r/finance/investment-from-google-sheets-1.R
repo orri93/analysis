@@ -3,6 +3,7 @@ library(quantmod)
 library(tidyverse)
 library(lubridate)
 library(googlesheets4)
+library(DT)
 
 # Suspend any previous Google authorization
 gs4_deauth()
@@ -84,6 +85,12 @@ for (row in 1:nrow(types)) {
 types <- types %>% mutate(Ratio = Profit / Investment, IR = Investment / total_inv, WR = Worth / total_worth)
 types <- arrange(types, Type) # Order
 rm(row, symbol, fh, infoline, type, fs)
+
+# Table
+eps <- 1E-5
+datatable(holdings) %>% formatCurrency(c('Price', 'Investment', 'Last', 'Worth', 'Profit', 'PPY')) %>% formatPercentage(c('Ratio', 'PPYR', 'IR', 'WR'), 2) %>% formatStyle(columns=1:15, color = styleInterval(cuts=c(-eps, eps), values=c("red", "black", "green")))
+datatable(summary) %>% formatCurrency(c('Investment', 'Last', 'Worth', 'Profit')) %>% formatPercentage(c('Ratio', 'IR', 'WR'), 2) %>% formatStyle(columns=1:11, color = styleInterval(cuts=c(-eps, eps), values=c("red", "black", "green")))
+datatable(types) %>% formatCurrency(c('Investment', 'Worth', 'Profit')) %>% formatPercentage(c('Ratio', 'IR', 'WR'), 2) %>% formatStyle(columns=1:7, color = styleInterval(cuts=c(-eps, eps), values=c("red", "black", "green")))
 
 # Plotting
 ggplot(data = holdings, mapping = aes(x = Date, y = Investment, fill = Symbol)) + geom_bar(stat = "identity") + theme_light()

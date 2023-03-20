@@ -4,6 +4,7 @@ library(quantmod)
 library(tidyverse)
 library(lubridate)
 library(googlesheets4)
+library(DT)
 
 # Suspend any previous Google authorization
 gs4_deauth()
@@ -86,6 +87,8 @@ types <- arrange(types, Type) # Order
 # Format for output
 holdings <- holdings %>% mutate(Date = format(Date))
 
+eps <- 1E-5
+
 result <- data.frame(
   Result = c(
     "Total Investment",
@@ -105,11 +108,11 @@ result <- data.frame(
 
 ui <- fluidPage(
   tags$h1("Investments"),
-  tableOutput('table'),
+  DTOutput('table'),
   tags$h2("Summary"),
-  tableOutput('summary'),
+  DTOutput('summary'),
   tags$h2("Type Summary"),
-  tableOutput('typesummary'),
+  DTOutput('typesummary'),
   tags$h2("Result"),
   tableOutput('result'),
   tags$h2("Visualization"),
@@ -133,14 +136,14 @@ ui <- fluidPage(
 )
 
 server <- function(input, output) {
-  output$table <- renderTable({
-    holdings
+  output$table <- renderDT({
+    datatable(holdings) %>% formatCurrency(c('Price', 'Investment', 'Last', 'Worth', 'Profit', 'PPY')) %>% formatPercentage(c('Ratio', 'PPYR', 'IR', 'WR'), 2) %>% formatStyle(columns=1:15, color = styleInterval(cuts=c(-eps, eps), values=c("red", "black", "green")))
   })
-  output$summary <- renderTable({
-    summary
+  output$summary <- renderDT({
+    datatable(summary) %>% formatCurrency(c('Investment', 'Last', 'Worth', 'Profit')) %>% formatPercentage(c('Ratio', 'IR', 'WR'), 2) %>% formatStyle(columns=1:11, color = styleInterval(cuts=c(-eps, eps), values=c("red", "black", "green")))
   })
-  output$typesummary <- renderTable({
-    types
+  output$typesummary <- renderDT({
+    datatable(types) %>% formatCurrency(c('Investment', 'Worth', 'Profit')) %>% formatPercentage(c('Ratio', 'IR', 'WR'), 2) %>% formatStyle(columns=1:7, color = styleInterval(cuts=c(-eps, eps), values=c("red", "black", "green")))
   })
   output$result <- renderTable({
     result
