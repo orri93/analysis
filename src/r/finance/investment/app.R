@@ -137,10 +137,10 @@ ui <- fluidPage(
 
 server <- function(input, output) {
   output$table <- renderDT({
-    datatable(holdings) %>% formatCurrency(c('Price', 'Investment', 'Last', 'Worth', 'Profit', 'PPY')) %>% formatPercentage(c('Ratio', 'PPYR', 'IR', 'WR'), 2) %>% formatStyle(columns=1:15, color = styleInterval(cuts=c(-eps, eps), values=c("red", "black", "green")))
+    datatable(holdings) %>% formatCurrency(c('Price', 'Investment', 'Last', 'Worth', 'Profit', 'PPY')) %>% formatPercentage(c('Ratio', 'PPYR', 'IR', 'WR'), 2) %>% formatRound('Years', 3) %>% formatStyle(columns=1:15, color = styleInterval(cuts=c(-eps, eps), values=c("red", "black", "green")))
   })
   output$summary <- renderDT({
-    datatable(summary) %>% formatCurrency(c('Investment', 'Last', 'Worth', 'Profit')) %>% formatPercentage(c('Ratio', 'IR', 'WR'), 2) %>% formatStyle(columns=1:11, color = styleInterval(cuts=c(-eps, eps), values=c("red", "black", "green")))
+    datatable(summary, options=list(iDisplayLength=15)) %>% formatCurrency(c('Investment', 'Last', 'Worth', 'Profit')) %>% formatPercentage(c('Ratio', 'IR', 'WR'), 2) %>% formatStyle(columns=1:11, color = styleInterval(cuts=c(-eps, eps), values=c("red", "black", "green")))
   })
   output$typesummary <- renderDT({
     datatable(types) %>% formatCurrency(c('Investment', 'Worth', 'Profit')) %>% formatPercentage(c('Ratio', 'IR', 'WR'), 2) %>% formatStyle(columns=1:7, color = styleInterval(cuts=c(-eps, eps), values=c("red", "black", "green")))
