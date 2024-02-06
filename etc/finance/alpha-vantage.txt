@@ -1,0 +1,3 @@
+In order to import quotes from Alpha Vantage, you must obtain an API key by completing a free, one-time registration at their website: https://www.alphavantage.co/. Then you can call getQuote with src = "av" and api.key = "[your key]".
+
+Welcome to Alpha Vantage! Your API key is: C3BDIWZ5OSPTON7X. Please record this API key at a safe place for future data access.

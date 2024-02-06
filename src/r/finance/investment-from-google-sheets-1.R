@@ -21,7 +21,7 @@ investment <- raw %>%
 price_table <- hashtab()
 for (row in 1:nrow(investment)) {
   symbol <- investment$Symbol[row]
-  quote <- getQuote(symbol)
+  quote <- getQuote(symbol, src="av", api.key="C3BDIWZ5OSPTON7X")
   sethash(price_table, symbol, quote$Last)
 }
 rm(symbol, quote)
