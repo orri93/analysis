@@ -1,4 +1,6 @@
 islrv2/
+*.xlsb
+*.xlsx
 *.txt
 *.zip
 *.map
