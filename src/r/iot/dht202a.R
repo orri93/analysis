@@ -33,4 +33,6 @@ dht <- dhtraw %>% select(ts, rh, t)
 dhtxts <- xts(dht[,-1], order.by = dht[,1])
 
 
-dygraph(dhtxts)
+dygraph(dhtxts) %>%
+  dySeries("rh", drawPoints = TRUE, pointSize = 2, strokeWidth = 0) %>%
+  dyRangeSelector(height = 20)
